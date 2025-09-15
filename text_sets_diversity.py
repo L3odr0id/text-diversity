@@ -165,26 +165,26 @@ def calc_custom_metric(distances: Distances, center_idx: int) -> float:
 
 # Configuration for Y series
 PLOT_SERIES_CONFIG = [
-    # PlotSeries(
-    #     name="Mean distance",
-    #     normalize=True,
-    #     calc_function=calc_mean_metric
-    # ),
+    PlotSeries(
+        name="Mean distance",
+        normalize=True,
+        calc_function=calc_mean_metric
+    ),
     # PlotSeries(
     #     name="Median distance", 
     #     normalize=True,
     #     calc_function=calc_median_metric
     # ),
-    PlotSeries(
-        name="Novelty (min distance from last)",
-        normalize=True,
-        calc_function=calc_novelty_metric
-    ),
-    PlotSeries(
-        name="Sqrt of sum squared",
-        normalize=True,
-        calc_function=calc_sqrt_sum_squared_metric
-    )
+    # PlotSeries(
+    #     name="Novelty (min distance from last)",
+    #     normalize=True,
+    #     calc_function=calc_novelty_metric
+    # ),
+    # PlotSeries(
+    #     name="Sqrt of sum squared",
+    #     normalize=True,
+    #     calc_function=calc_sqrt_sum_squared_metric
+    # )
 ]
 
 def analyze_minimax(distance_storages: List[Distances], filenames: List[str]):
@@ -218,10 +218,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Text sets diversity utility")
     parser.add_argument("directory", help="Path to directory containing text files")
     parser.add_argument("--max-files", type=int, help="Maximum number of files to analyze")
+    parser.add_argument("--output", type=str, help="Name of the output plot file", default="ncd_stats_plots.png")
     args = parser.parse_args()
 
     directory = args.directory
     max_files = args.max_files
+    output_file = args.output
 
     filenames = [
         name for name in os.listdir(directory)
@@ -287,7 +289,7 @@ def main() -> None:
                     (series.name, series_data[series.name], series.normalize)
                     for series in PLOT_SERIES_CONFIG
                 ]
-                draw_all_plots(x_values=x_values, plots=plots, title="Distance vs Number of Files", output_path="ncd_stats_plots.png")
+                draw_all_plots(x_values=x_values, plots=plots, title="Distance vs Number of Files", output_path=output_file)
         except Exception as e:
             print(f"Error reading {name}: {e}")
 
