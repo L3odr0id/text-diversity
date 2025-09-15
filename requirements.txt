@@ -1,0 +1,4 @@
+textdistance
+matplotlib
+pandas
+numpy
