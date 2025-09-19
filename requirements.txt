@@ -1,4 +1,4 @@
 textdistance
 matplotlib
-pandas
 numpy
+scipy
