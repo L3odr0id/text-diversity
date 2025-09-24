@@ -13,12 +13,15 @@ class TextsDiversity:
         self.min_files_for_analysis = min_files_for_analysis
         self.start_datetime = None
 
-    def process_file(self, new_file_content: str):
-        self.texts.append(new_file_content)
+    def process_file(self, file_path: str):
+        with open(file_path, "r", encoding="utf-8") as f:
+            new_file_content = f.read()
 
         for plot_config in self.plots_list.configs:
-            for td in plot_config.texts_distances:
-                td.add_dist(self.texts, new_file_content)
+            for ci in plot_config.calc_infos:
+                ci.distances.add_dist(self.texts, new_file_content)
+
+        self.texts.append(new_file_content)
 
         if len(self.texts) < self.min_files_for_analysis:
             return

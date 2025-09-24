@@ -7,7 +7,11 @@ from typing import List, Tuple, Callable
 from scipy.stats import poisson
 from textdistance import EntropyNCD, LZMANCD, ArithNCD
 
-from texts_diversity.common_distances import always_0, always_1
+from texts_diversity.common_distances import (
+    always_0,
+    always_1,
+    LevenshteinDistanceNormalized,
+)
 from texts_diversity.files_list import FilesList
 from texts_diversity.texts_diversity import TextsDiversity
 from texts_diversity.plot_config import PlotConfig
@@ -17,6 +21,13 @@ from texts_diversity.algo import Algo
 from texts_diversity.common_metrics import calc_mean_metric
 from texts_diversity.common_normalization import min_max_normalization
 from texts_diversity.plots_list import PlotsList
+from min_distance_metric import MinDistanceMetric
+from texts_diversity.calc_info import CalcInfo
+from utils import cis_same_metric
+from texts_diversity.iterative_plot_config import IterativePlotConfig
+from texts_diversity.algo import CompressAlgo
+from TDSMetric import TDSMetric
+from remove_percentage_metric import RemovePercentageMetric
 
 
 # def calc_novelty_metric(distances: Distances) -> float:
@@ -58,30 +69,35 @@ def custom_entropy(a: str, b: str):
 #     mean_sum_squared = sum_squared / len(distance_values)
 #     return math.sqrt(mean_sum_squared)
 
-# def calc_mean_sqrt_sum_squared_metric_from_minimax_center(distances: Distances) -> float:
-#     center_idx, _, _ = distances.find_minimax_center()
-#     num_texts = distances.max_key() + 1
-#     if num_texts < 2:
-#         return float("nan")
 
-#     distances_from_center = []
-#     for i in range(num_texts):
-#         if i != center_idx:
-#             distance = distances.distance(center_idx, i)
-#             distances_from_center.append(distance)
+def calc_mean_sqrt_sum_squared_metric_from_minimax_center(
+    distances: TextsDistances,
+) -> float:
+    center_idx, _, _ = distances.find_minimax_center()
+    num_texts = distances.max_key() + 1
+    if num_texts < 2:
+        return float("nan")
 
-#     sum_squared = sum(distance * distance for distance in distances_from_center)
-#     mean_sum_squared = sum_squared / len(distances_from_center)
-#     return math.sqrt(mean_sum_squared)
+    distances_from_center = []
+    for i in range(num_texts):
+        if i != center_idx:
+            distance = distances.distance(center_idx, i)
+            distances_from_center.append(distance)
 
-# def calc_poisson_distribution(distances: Distances) -> float:
-#     distance_values = distances.get_values()
-#     distance_values.sort()
-#     values = []
-#     for i in range(len(distance_values)):
-#         value = 2 * distance_values[i] * poisson.pmf(i, len(distance_values))
-#         values.append(value)
-#     return sum(values)
+    sum_squared = sum(distance * distance for distance in distances_from_center)
+    mean_sum_squared = sum_squared / len(distances_from_center)
+    return math.sqrt(mean_sum_squared)
+
+
+def calc_poisson_distribution(distances: TextsDistances) -> float:
+    distance_values = distances.get_normalized_values()
+    distance_values.sort()
+    values = []
+    for i in range(len(distance_values)):
+        value = 2 * distance_values[i] * poisson.pmf(i, len(distance_values))
+        values.append(value)
+    return sum(values)
+
 
 # def calc_poisson_distribution_plus_1_minus_always_1(distances: Distances) -> float:
 #     poisson_value = calc_poisson_distribution(distances=distances)
@@ -91,34 +107,12 @@ def custom_entropy(a: str, b: str):
 #     return poisson_value + 1 - always_1_poisson
 
 
-PLOT_CONFIGS = [
-    # PlotConfig(
-    #     name="Mean distance",
-    #     metric=calc_mean_metric,
-    #     normalize_algorithms=[]
-    # ),
-    # PlotConfig(
-    #     name="Mean sqrt of sum squared",
-    #     metric=calc_mean_sqrt_sum_squared_metric,
-    #     normalize_algorithms=[]
-    # ),
-    # PlotConfig(
-    #     name="Mean sqrt of sum squared from minimax center",
-    #     metric=calc_mean_metric,
-    #     normalize_algorithms=["EntropyNCD * 5"]
-    # ),
-    PlotConfig(
-        name="Mean distance plot",
-        metric=Metric(name="Mean distance", calc=calc_mean_metric),
-        algos=[
-            Algo("EntropyNCD * 5", custom_entropy),
-            Algo("EntropyNCD", EntropyNCD().distance),
-            Algo("LZMANCD", LZMANCD().distance),
-            Algo("Always 0", always_0),
-            Algo("Always 1", always_1),
-        ],
-    ),
-]
+def lzma_compress(text: str) -> bytes:
+    return LZMANCD()._compress(bytes(text, "utf-8"))
+
+
+lzma_algo = Algo("LZMANCD", LZMANCD().distance)
+poisson_metric = Metric("Poisson", calc_poisson_distribution)
 
 
 def main() -> None:
@@ -145,15 +139,120 @@ def main() -> None:
     output_file = args.output
     shuffle = args.shuffle
 
-    TextsDiversity(
-        min_files_for_analysis=10,
-        files_list=FilesList(dir=directory, shuffle=shuffle, max_files=max_files),
-        plots_list=PlotsList(
-            configs=PLOT_CONFIGS,
-            title="Distance vs Number of Files",
-            output_file=output_file,
-        ),
-    ).draw_plots()
+    files_list = FilesList(dir=directory, shuffle=shuffle, max_files=max_files)
+
+    # levenshtein_distance_normalized = LevenshteinDistanceNormalized(
+    #     files_list=files_list
+    # )
+    # levenshtein_distance_normalized_algo = Algo(
+    #     "Levenshtein Normalized Distance", levenshtein_distance_normalized.distance
+    # )
+
+    plot_configs = [
+        # PlotConfig(
+        #     name="Mean distance vs number of files",
+        #     calc_infos=cis_same_metric(
+        #         algos=[
+        #             # Algo("EntropyNCD * 5", custom_entropy),
+        #             # Algo("EntropyNCD", EntropyNCD().distance),
+        #             # Algo("LZMANCD", LZMANCD().distance),
+        #             # levenshtein_distance_normalized_algo,
+        #             Algo("Always 0", always_0),
+        #             Algo("Always 1", always_1),
+        #         ],
+        #         metric=lambda: Metric(name="Min Distance", calc=calc_mean_metric),
+        #     ),
+        # ),
+        # PlotConfig(
+        #     name="Min distance vs number of files",
+        #     calc_infos=cis_same_metric(
+        #         algos=[
+        #             Algo("EntropyNCD * 5", custom_entropy),
+        #             Algo("EntropyNCD", EntropyNCD().distance),
+        #             Algo("LZMANCD", LZMANCD().distance),
+        #             Algo("Always 0", always_0),
+        #             Algo("Always 1", always_1),
+        #         ],
+        #         metric=lambda: Metric(
+        #             name="Min Distance", calc=MinDistanceMetric().calc
+        #         ),
+        #     ),
+        # ),
+        # PlotConfig(
+        #     name="Mean distance plot",
+        #     calc_infos=[
+        #         CalcInfo(
+        #             metric=Metric(name="Add min distance", calc=MinDistanceMetric().calc),
+        #             algo=Algo("EntropyNCD * 5", custom_entropy),
+        #         ),
+        #         CalcInfo(
+        #             metric=Metric(name="Add min distance", calc=MinDistanceMetric().calc),
+        #             algo=Algo("EntropyNCD", EntropyNCD().distance),
+        #         ),
+        #         CalcInfo(
+        #             metric=Metric(name="Add min distance", calc=MinDistanceMetric().calc),
+        #             algo=Algo("LZMANCD", LZMANCD().distance),
+        #         ),
+        #         CalcInfo(
+        #             metric=Metric(name="Add min distance", calc=MinDistanceMetric().calc),
+        #             algo=Algo("Always 0", always_0),
+        #         ),
+        #         CalcInfo(
+        #             metric=Metric(name="Add min distance", calc=MinDistanceMetric().calc),
+        #             algo=Algo("Always 1", always_1),
+        #         ),
+        #     ],
+        # ),
+        # PlotConfig(
+        #     name="Min distance vs number of files",
+        #     calc_infos=cis_same_metric(
+        #         algos=[
+        #             Algo("EntropyNCD", EntropyNCD().distance),
+        #         ],
+        #         metric=lambda: Metric(
+        #             name="Min Distance", calc=MinDistanceMetric().calc
+        #         ),
+        #     ),
+        # ),
+        # PlotConfig(
+        #     name="Min distance vs number of files",
+        #     calc_infos=cis_same_metric(
+        #         algos=[
+        #             Algo("LZMANCD", LZMANCD().distance),
+        #         ],
+        #         metric=lambda: Metric(
+        #             name="Min Distance", calc=MinDistanceMetric().calc
+        #         ),
+        #     ),
+        # ),
+    ]
+
+    # TextsDiversity(
+    #     min_files_for_analysis=10,
+    #     files_list=files_list,
+    #     plots_list=PlotsList(
+    #         configs=plot_configs,
+    #         title="Distance vs Number of Files",
+    #         output_file=output_file,
+    #     ),
+    # ).draw_plots()
+
+    # IterativePlotConfig(
+    #     name="TDS Metric",
+    #     texts=files_list.get_texts(),
+    #     metric=TDSMetric(algo=CompressAlgo(name="LZMA", func=lzma_compress)),
+    #     output_file=output_file,
+    # ).execute()
+
+    RemovePercentageMetric(
+        metric=poisson_metric,
+        algo=lzma_algo,
+        eps=0.01,
+        max_tries=10,
+        output_file=output_file,
+    ).calc(
+        texts=files_list.get_texts(),
+    )
 
 
 if __name__ == "__main__":

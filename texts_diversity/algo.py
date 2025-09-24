@@ -6,3 +6,9 @@ from typing import Callable
 class Algo:
     name: str
     func: Callable[[str, str], float]
+
+
+@dataclass
+class CompressAlgo:
+    name: str
+    func: Callable[[str], bytes]

@@ -28,6 +28,9 @@ class TextsDistances:
 
             self.data[(prev_idx, current_idx)] = distance_value
 
+    def max_key(self) -> int:
+        return max(max(i, j) for i, j in self.data.keys())
+
     def distance(self, from_idx: int, to_idx: int) -> float:
         """Get distance between two texts by their indices."""
         if (from_idx, to_idx) in self.data and self.data[

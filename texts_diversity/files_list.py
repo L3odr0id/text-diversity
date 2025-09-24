@@ -29,3 +29,9 @@ class FilesList:
     def for_each(self, f: Callable[[str], None]):
         for file_path in self.file_paths:
             f(file_path)
+
+    def get_texts(self) -> List[str]:
+        return [
+            open(file_path, "r", encoding="utf-8").read()
+            for file_path in self.file_paths
+        ]
