@@ -28,6 +28,7 @@ from texts_diversity.iterative_plot_config import IterativePlotConfig
 from texts_diversity.algo import CompressAlgo
 from TDSMetric import TDSMetric
 from remove_percentage_metric import RemovePercentageMetric
+from remove_percentage_plot import RemovePercentagePlot
 
 
 # def calc_novelty_metric(distances: Distances) -> float:
@@ -99,6 +100,33 @@ def calc_poisson_distribution(distances: TextsDistances) -> float:
     return sum(values)
 
 
+def calc_poisson_mins(distances: TextsDistances) -> float:
+    """Calculate Poisson distribution using minimal distances for each text."""
+    num_texts = distances.max_key() + 1
+    min_distances = []
+
+    for i in range(num_texts):
+        distances_to_others = [
+            distances.distance(i, j)
+            for j in range(num_texts)
+            if i != j and not math.isnan(distances.distance(i, j))
+        ]
+        min_distances.append(min(distances_to_others))
+
+    if not min_distances:
+        return float("nan")
+
+    if distances.normalize:
+        min_distances = distances.normalize(min_distances)
+
+    min_distances.sort()
+    values = []
+    for i in range(len(min_distances)):
+        value = 2 * min_distances[i] * poisson.pmf(i, len(min_distances))
+        values.append(value)
+    return sum(values)
+
+
 # def calc_poisson_distribution_plus_1_minus_always_1(distances: Distances) -> float:
 #     poisson_value = calc_poisson_distribution(distances=distances)
 #     always_1_dist = Distances(distance_func=always_1, algo_name="Always 1")
@@ -112,7 +140,30 @@ def lzma_compress(text: str) -> bytes:
 
 
 lzma_algo = Algo("LZMANCD", LZMANCD().distance)
-poisson_metric = Metric("Poisson", calc_poisson_distribution)
+entropy_algo = Algo("EntropyNCD", EntropyNCD().distance)
+entropy_algo_x5 = Algo("EntropyNCD * 5", custom_entropy)
+poisson_metric = Metric("Poisson_dist", calc_poisson_distribution)
+poisson_mins_metric = Metric("Poisson_mins", calc_poisson_mins)
+
+
+def filters_list_for_each(
+    metrics: List[Metric],
+    algos: List[Algo],
+    files_list: FilesList,
+    eps: float,
+    max_tries: int,
+) -> List[RemovePercentageMetric]:
+    return [
+        RemovePercentageMetric(
+            metric=metric,
+            algo=algo,
+            eps=eps,
+            max_tries=max_tries,
+            initial_texts=files_list.get_texts(),
+        )
+        for metric in metrics
+        for algo in algos
+    ]
 
 
 def main() -> None:
@@ -225,6 +276,21 @@ def main() -> None:
         #         ),
         #     ),
         # ),
+        PlotConfig(
+            name="Poisson_mins distance vs number of files",
+            calc_infos=cis_same_metric(
+                algos=[
+                    Algo("EntropyNCD * 5", custom_entropy),
+                    Algo("EntropyNCD", EntropyNCD().distance),
+                    Algo("LZMANCD", LZMANCD().distance),
+                    Algo("Always 0", always_0),
+                    Algo("Always 1", always_1),
+                ],
+                metric=lambda: Metric(
+                    name="Poisson_mins Distance", calc=calc_poisson_mins
+                ),
+            ),
+        ),
     ]
 
     # TextsDiversity(
@@ -232,7 +298,7 @@ def main() -> None:
     #     files_list=files_list,
     #     plots_list=PlotsList(
     #         configs=plot_configs,
-    #         title="Distance vs Number of Files",
+    #         title="Plots list title",
     #         output_file=output_file,
     #     ),
     # ).draw_plots()
@@ -244,15 +310,16 @@ def main() -> None:
     #     output_file=output_file,
     # ).execute()
 
-    RemovePercentageMetric(
-        metric=poisson_metric,
-        algo=lzma_algo,
-        eps=0.01,
-        max_tries=10,
+    RemovePercentagePlot(
+        filters=filters_list_for_each(
+            metrics=[poisson_metric],
+            algos=[lzma_algo, entropy_algo, entropy_algo_x5],
+            files_list=files_list,
+            eps=0.01,
+            max_tries=10,
+        ),
         output_file=output_file,
-    ).calc(
-        texts=files_list.get_texts(),
-    )
+    ).draw()
 
 
 if __name__ == "__main__":

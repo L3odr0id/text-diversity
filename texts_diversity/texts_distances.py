@@ -73,3 +73,18 @@ class TextsDistances:
         if self.normalize:
             return self.normalize(values)
         return values
+
+    def copy(self):
+        new_distances = TextsDistances(self.algo, self.normalize)
+        new_distances.data = self.data.copy()
+        return new_distances
+
+    def add_list(self, texts: List[str]):
+        for i, text in enumerate(texts):
+            self.add_dist(texts[:i], text)
+
+    def remove_list(self, text_ids: List[int]):
+        for i in text_ids:
+            for j in range(i + 1, self.max_key() + 1):
+                self.data.pop((i, j))
+                self.data.pop((j, i))

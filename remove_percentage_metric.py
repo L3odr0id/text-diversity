@@ -1,5 +1,6 @@
 import time
 import random
+from dataclasses import dataclass
 from typing import List, Union
 import matplotlib.pyplot as plt
 
@@ -15,22 +16,43 @@ from texts_diversity.texts_distances import TextsDistances
 from texts_diversity.algo import Algo
 
 
-class RemovePercentageMetric(IterativeMetric):
+@dataclass
+class PercentageFilterPlotInfo:
+    iterations: int
+    texts_count_per_iter: List[int]
+    metric_values_per_iter: List[float]
+    metric_name: str
+    algo_name: str
+
+
+class RemovePercentageMetric:
     def __init__(
-        self, metric: Metric, algo: Algo, eps: float, max_tries: int, output_file: str
+        self,
+        metric: Metric,
+        algo: Algo,
+        eps: float,
+        max_tries: int,
+        initial_texts: List[str],
     ):
-        super().__init__("Remove Percentage Metric")
         self.metric = metric
         self.algo = algo
         self.eps = eps
         self.max_tries = max_tries
-        self.output_file = output_file
+        self.metric_value = self.metric_value_for_texts(initial_texts)
+        self.texts = initial_texts
+        self.iteration = 0
+        self.texts_count_per_iter = [len(initial_texts)]
+        self.metric_values_per_iter = [self.metric_value]
+        self.is_finished = False
 
     def metric_value_for_texts(self, texts: List[str]) -> float:
         distances = TextsDistances(self.algo)
         for i, text in enumerate(texts):
             distances.add_dist(texts[:i], text)
         return self.metric.calc(distances)
+
+    def basic_info_log(self) -> str:
+        return f"Metric: {self.metric.name}. Algo: {self.algo.name}. Iter: {self.iteration}."
 
     def try_to_remove_texts(
         self,
@@ -49,16 +71,17 @@ class RemovePercentageMetric(IterativeMetric):
             remaining_texts = [text for text in texts if text not in texts_to_remove]
             new_value = self.metric_value_for_texts(remaining_texts)
             metric_change = abs(new_value - current_value)
+            eps_change = self.eps * current_value
             print(
-                f"[attempt] Iter {iteration}. Try {attempt + 1}. Remove {removal_percentage}% ({num_to_remove}). Old {current_value}. New {new_value}. Diff: {metric_change}. eps: {self.eps}."
+                f"[attempt] {self.basic_info_log()} Try {attempt + 1}. Remove {removal_percentage * 100}% ({num_to_remove}). Old {current_value}. New {new_value}. Diff: {metric_change}. eps: {self.eps}. eps*prev_value: {eps_change}."
             )
-            if metric_change <= self.eps:
+            if metric_change <= eps_change:
                 print(
-                    f"[attempt] Iter {iteration}. Try {attempt + 1}. Successfully removed texts. Removed {removal_percentage}% ({num_to_remove})"
+                    f"[attempt] {self.basic_info_log()} Try {attempt + 1}. Successfully removed texts. Removed {removal_percentage * 100}% ({num_to_remove})"
                 )
                 return remaining_texts, False, new_value
         print(
-            f"[attempt] Iter {iteration}. Try {attempt + 1}. Failed to remove texts. Tried to remove {removal_percentage}% ({num_to_remove})"
+            f"[attempt] {self.basic_info_log()} Try {attempt + 1}. Failed to remove texts. Tried to remove {removal_percentage * 100}% ({num_to_remove})"
         )
         return texts, False, current_value
 
@@ -66,7 +89,7 @@ class RemovePercentageMetric(IterativeMetric):
         self, texts: List[str], initial_value: float, iteration: int
     ) -> Union[List[str], float]:
         print(
-            f"[search] Start searching for removal percentage. Iter {iteration}. Initial value: {initial_value}. Texts count: {len(texts)}."
+            f"[search] Start searching for removal percentage. {self.basic_info_log()} Initial value: {initial_value}. Texts count: {len(texts)}."
         )
         left = 0
         right = 100
@@ -77,7 +100,7 @@ class RemovePercentageMetric(IterativeMetric):
         while left <= right:
             mid = (left + right) // 2
             print(
-                f"[search] Iter {iteration}. Mid: {mid}. Left: {left}. Right: {right}. Init texts count: {len(texts)}. Possible result count {len(res_texts)}."
+                f"[search] {self.basic_info_log()} Mid: {mid}. Left: {left}. Right: {right}. Init texts count: {len(texts)}. Possible result count {len(res_texts)}."
             )
 
             new_texts, isFinished, new_value = self.try_to_remove_texts(
@@ -90,7 +113,7 @@ class RemovePercentageMetric(IterativeMetric):
             if isFinished:
                 num_to_remove = int(len(texts) * mid / 100)
                 print(
-                    f"[search] Iter {iteration}. Tried to remove {mid / 100}% ({num_to_remove}). Break."
+                    f"[search] {self.basic_info_log()} Tried to remove {mid / 100}% ({num_to_remove}). Break."
                 )
                 return (texts, initial_value)
 
@@ -100,32 +123,50 @@ class RemovePercentageMetric(IterativeMetric):
                 res_texts = new_texts
                 res_value = new_value
                 print(
-                    f"[search] Iter {iteration}. Removed {mid / 100}%. New value: {new_value}. New texts count: {len(new_texts)}."
+                    f"[search] {self.basic_info_log()} Removed {mid / 100}%. New value: {new_value}. New texts count: {len(new_texts)}."
                 )
                 left = mid + 1
             else:
-                print(f"[search] Iter {iteration}. Did not removed {mid / 100}%.")
+                print(f"[search] {self.basic_info_log()} Did not removed {mid / 100}%.")
                 right = mid - 1
 
         print(
-            f"[search] Iter {iteration}. Finished. Removed {mid / 100}%. New value: {res_value}. New texts count: {len(res_texts)}."
+            f"[search] {self.basic_info_log()} Finished. Removed {mid / 100}%. New value: {res_value}. New texts count: {len(res_texts)}."
         )
         return (res_texts, res_value)
 
-    def calc(self, texts: List[str]):
-        metric_value = self.metric_value_for_texts(texts)
-        successfuly_shrinked = True
-        iteration = 1
-        while successfuly_shrinked and len(texts) > 2:
-            new_texts, new_value = self.search_for_removal_percentage(
-                texts, metric_value, iteration=iteration
-            )
-            successfuly_shrinked = len(new_texts) < len(texts)
-            texts = new_texts
-            metric_value = new_value
-            iteration += 1
+    def iterate(self):
+        if self.is_finished:
+            return
 
-        # Draw graphs
+        new_texts, new_value = self.search_for_removal_percentage(
+            self.texts, self.metric_value, iteration=self.iteration
+        )
+        successfuly_shrinked = len(new_texts) < len(self.texts)
+        self.texts = new_texts
+        self.metric_value = new_value
+        self.is_finished = (not successfuly_shrinked) or len(self.texts) <= 2
+        if not self.is_finished:
+            self.iteration += 1
+            self.texts_count_per_iter.append(len(self.texts))
+            self.metric_values_per_iter.append(self.metric_value)
+
+    def plot_info(self) -> PercentageFilterPlotInfo:
+        return PercentageFilterPlotInfo(
+            iterations=self.iteration,
+            texts_count_per_iter=self.texts_count_per_iter,
+            metric_values_per_iter=self.metric_values_per_iter,
+            metric_name=self.metric.name,
+            algo_name=self.algo.name,
+        )
+
+    # def calc(self, texts: List[str]):
+
+    #     successfuly_shrinked = True
+
+    #     while successfuly_shrinked and len(texts) > 2:
+
+    # Draw graphs
 
     # def draw(self, y_values: List[float], x_values: List[int]):
     #     fig, ax = plt.subplots(1, 1, figsize=(10, 6))
