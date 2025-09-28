@@ -7,7 +7,9 @@ from texts_diversity.utils import save_plot_safely
 
 
 class PlotsList:
-    def __init__(self, configs: List[PlotConfig], title: str, output_file: str):
+    def __init__(
+        self, configs: List[PlotConfig], title: str, output_file: str, fig, axes
+    ):
         self.configs = configs
         self.x_values = []
         self.y_values = {
@@ -16,6 +18,8 @@ class PlotsList:
         }
         self.title = title
         self.output_file = output_file
+        self.fig = fig
+        self.axes = axes
 
     def add_x_value(self, x_value: int):
         self.x_values.append(x_value)
@@ -24,15 +28,20 @@ class PlotsList:
         for plot_config in self.configs:
             for calc_info in plot_config.calc_infos:
                 y_value = calc_info.metric.calc(calc_info.distances)
+                print(
+                    f"Metric {calc_info.metric.name}. Algo: {calc_info.distances.algo.name}. Value: {y_value}. For {self.x_values[-1]} texts"
+                )
                 self.y_values[plot_config][calc_info].append(y_value)
 
     def draw(self):
-        num_plots = max(1, len(self.configs))
-        fig, axes = plt.subplots(1, num_plots, figsize=(10 * num_plots, 6))
-        if num_plots == 1:
-            axes = [axes]
-        for idx, plot_config in enumerate(self.configs):
 
+        fig = self.fig
+        axes = self.axes
+        assert len(axes) == len(
+            self.configs
+        ), f"Number of axes ({len(axes)}) must equal number of configs ({len(self.configs)})"
+
+        for idx, plot_config in enumerate(self.configs):
             series = {}
             for calc_info in plot_config.calc_infos:
                 # Create unique label combining metric and algorithm names

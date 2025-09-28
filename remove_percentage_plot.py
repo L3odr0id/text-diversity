@@ -1,6 +1,7 @@
 from typing import List
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 
 from remove_percentage_metric import PercentageFilterPlotInfo, RemovePercentageMetric
 from texts_diversity.utils import save_plot_safely
@@ -12,53 +13,49 @@ class RemovePercentagePlot:
         self.output_file = output_file
         print(f"RemovePercentagePlot initialized with {len(filters)} filters.")
 
-    def draw(self):
-        # Run iterations until all filters are finished
+    def draw(self, fig, ax1, ax2):
         while not all(f.is_finished for f in self.filters):
             for f in self.filters:
                 if not f.is_finished:
                     f.iterate()
 
-            # Collect plot info from all filters
             plot_infos = [f.plot_info() for f in self.filters]
 
-            # Create figure with two subplots
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+            def plot_data(ax, y_label, title, y_value_func, label_func):
+                ax.clear()  # TODO: improve perfomance. Add just a new series value instead of clearing the plot
 
-            # Plot 1: Files count vs iteration
-            for plot_info in plot_infos:
-                iterations = list(range(plot_info.iterations + 1))
-                ax1.plot(
-                    iterations,
-                    plot_info.texts_count_per_iter,
-                    marker="o",
-                    linewidth=2,
-                    label=f"{plot_info.metric_name} x {plot_info.algo_name}",
-                )
+                for plot_info in plot_infos:
+                    iterations = list(range(plot_info.iterations + 1))
+                    ax.plot(
+                        iterations,
+                        y_value_func(plot_info),
+                        marker="o",
+                        linewidth=2,
+                        label=label_func(plot_info),
+                    )
 
-            ax1.set_xlabel("Iteration")
-            ax1.set_ylabel("Number of texts")
-            ax1.set_title("Texts Count vs Iteration")
-            ax1.grid(True, linestyle=":", linewidth=0.5)
-            ax1.legend(loc="best")
+                ax.set_xlabel("Iteration")
+                ax.set_ylabel(y_label)
+                ax.set_title(title)
+                ax.grid(True, linestyle=":", linewidth=0.5)
+                ax.legend(loc="best")
+                ax.xaxis.set_major_locator(mticker.MaxNLocator(integer=True))
 
-            # Plot 2: Metric values vs iteration
-            for plot_info in plot_infos:
-                iterations = list(range(plot_info.iterations + 1))
-                ax2.plot(
-                    iterations,
-                    plot_info.metric_values_per_iter,
-                    marker="o",
-                    linewidth=2,
-                    label=f"{plot_info.metric_name} + {plot_info.algo_name}",
-                )
+            plot_data(
+                ax1,
+                "Metric Value",
+                "Metric Value vs Iteration",
+                lambda plot_info: plot_info.metric_values_per_iter,
+                lambda plot_info: f"{plot_info.metric_name} + {plot_info.algo_name}",
+            )
 
-            ax2.set_xlabel("Iteration")
-            ax2.set_ylabel("Metric Value")
-            ax2.set_title("Metric Value vs Iteration")
-            ax2.grid(True, linestyle=":", linewidth=0.5)
-            ax2.legend(loc="best")
+            plot_data(
+                ax2,
+                "Number of texts",
+                "Texts Count vs Iteration",
+                lambda plot_info: plot_info.texts_count_per_iter,
+                lambda plot_info: f"{plot_info.metric_name} x {plot_info.algo_name}",
+            )
 
-            # Adjust layout and save
             plt.tight_layout()
             save_plot_safely(fig, self.output_file)

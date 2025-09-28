@@ -12,6 +12,8 @@ class Plot:
     x_name: str
 
     def draw(self):
+        self.ax.clear()
+
         for label, y_values in self.series.items():
             self.ax.plot(self.x_values, y_values, marker="o", linewidth=1, label=label)
         self.ax.set_xlabel(self.x_name)

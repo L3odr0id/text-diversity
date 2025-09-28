@@ -79,12 +79,12 @@ class TextsDistances:
         new_distances.data = self.data.copy()
         return new_distances
 
-    def add_list(self, texts: List[str]):
-        for i, text in enumerate(texts):
-            self.add_dist(texts[:i], text)
-
     def remove_list(self, text_ids: List[int]):
-        for i in text_ids:
-            for j in range(i + 1, self.max_key() + 1):
-                self.data.pop((i, j))
-                self.data.pop((j, i))
+        keys_to_remove = []
+        for key in self.data.keys():
+            i, j = key
+            if i in text_ids or j in text_ids:
+                keys_to_remove.append(key)
+
+        for key in keys_to_remove:
+            self.data.pop(key, None)
