@@ -26,7 +26,7 @@ class PercentageFilterPlotInfo:
     algo_name: str
 
 
-class RemovePercentageMetric:
+class RemovePercentageCompareFilter:
     def __init__(
         self,
         calc_info: CalcInfo,

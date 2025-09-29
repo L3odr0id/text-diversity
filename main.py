@@ -28,8 +28,9 @@ from utils import cis_same_metric
 from texts_diversity.iterative_plot_config import IterativePlotConfig
 from texts_diversity.algo import CompressAlgo
 from TDSMetric import TDSMetric
-from remove_percentage_metric import RemovePercentageMetric
-from remove_percentage_plot import RemovePercentagePlot
+from remove_percentage_compare_metric import RemovePercentageCompareFilter
+from remove_percentage_compare_plot import RemovePercentageComparePlot
+from TDS_metric_plot import TDSMetricPlot
 
 
 # def calc_novelty_metric(distances: Distances) -> float:
@@ -140,6 +141,15 @@ def lzma_compress(text: str) -> bytes:
     return LZMANCD()._compress(bytes(text, "utf-8"))
 
 
+lzma_algo_compress = CompressAlgo(name="LZMA", func=lzma_compress)
+
+
+def entropy_compress(text: str) -> bytes:
+    return EntropyNCD()._compress(bytes(text, "utf-8"))
+
+
+entropy_algo_compress = CompressAlgo(name="Entropy", func=entropy_compress)
+
 lzma_algo = Algo("LZMANCD", LZMANCD().distance)
 entropy_algo = Algo("EntropyNCD", EntropyNCD().distance)
 entropy_algo_x5 = Algo("EntropyNCD * 5", custom_entropy)
@@ -152,9 +162,9 @@ def filters_list_for_each(
     files_list: FilesList,
     eps: float,
     max_tries: int,
-) -> List[RemovePercentageMetric]:
+) -> List[RemovePercentageCompareFilter]:
     return [
-        RemovePercentageMetric(
+        RemovePercentageCompareFilter(
             calc_info=calc_info,
             eps=eps,
             max_tries=max_tries,
@@ -311,7 +321,7 @@ def main() -> None:
     ).draw_plots()
 
     if add_filter_plot:
-        remove_percentage_plot = RemovePercentagePlot(
+        remove_percentage_plot = RemovePercentageComparePlot(
             filters=filters_list_for_each(
                 calc_infos=calc_infos,
                 files_list=files_list,
@@ -329,9 +339,20 @@ def main() -> None:
     # IterativePlotConfig(
     #     name="TDS Metric",
     #     texts=files_list.get_texts(),
-    #     metric=TDSMetric(algo=CompressAlgo(name="LZMA", func=lzma_compress)),
+    #     metric=TDSMetric(algo=),
     #     output_file=output_file,
     # ).execute()
+
+    # TDSMetricPlot(
+    #     files_list=files_list,
+    #     metrics=[
+    #         TDSMetric(algo=lzma_algo_compress),
+    #         # TDSMetric(algo=entropy_algo_compress),
+    #         # TDSMetric(algo=always_0),
+    #         # TDSMetric(algo=always_1),
+    #     ],
+    #     output_file=output_file,
+    # ).make_plot()
 
 
 if __name__ == "__main__":

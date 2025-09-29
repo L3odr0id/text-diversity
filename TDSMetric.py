@@ -30,7 +30,9 @@ class TDSMetric(IterativeMetric):
         value = (c_X - min_length) / max_c_x_removed
 
         elapsed = time.time() - start_time
-        print(f"TDSMetric. NCD1: elapsed {elapsed:.4f}s for {len(texts)} texts")
+        print(
+            f"[TDSM]. Algo: {self.algo.name}. NCD1: elapsed {elapsed:.4f}s for {len(texts)} texts"
+        )
         return value
 
     def calc(self, texts: List[str]) -> IterativeMetricCalculationResult:

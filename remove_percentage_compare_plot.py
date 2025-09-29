@@ -3,15 +3,18 @@ from typing import List
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
-from remove_percentage_metric import PercentageFilterPlotInfo, RemovePercentageMetric
+from remove_percentage_compare_metric import (
+    PercentageFilterPlotInfo,
+    RemovePercentageCompareFilter,
+)
 from texts_diversity.utils import save_plot_safely
 
 
-class RemovePercentagePlot:
-    def __init__(self, filters: List[RemovePercentageMetric], output_file: str):
+class RemovePercentageComparePlot:
+    def __init__(self, filters: List[RemovePercentageCompareFilter], output_file: str):
         self.filters = filters
         self.output_file = output_file
-        print(f"RemovePercentagePlot initialized with {len(filters)} filters.")
+        print(f"RemovePercentageComparePlot initialized with {len(filters)} filters.")
 
     def draw(self, fig, ax1, ax2):
         while not all(f.is_finished for f in self.filters):
