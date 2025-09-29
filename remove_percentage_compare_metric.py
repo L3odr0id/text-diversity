@@ -15,6 +15,7 @@ from texts_diversity.metric import Metric
 from texts_diversity.texts_distances import TextsDistances
 from texts_diversity.algo import Algo
 from texts_diversity.calc_info import CalcInfo
+from tests_runner import TestsRunner
 
 
 @dataclass
@@ -33,6 +34,7 @@ class RemovePercentageCompareFilter:
         eps: float,
         max_tries: int,
         initial_texts: List[str],
+        tests_runner: TestsRunner,
     ):
         self.metric = calc_info.metric
         self.algo = calc_info.distances.algo
@@ -47,7 +49,7 @@ class RemovePercentageCompareFilter:
         self.all_distances = calc_info.distances
         self.metric_value = self.metric.calc(self.all_distances)
         self.original_texts_indices_set = set(range(len(initial_texts)))
-
+        self.tests_runner = tests_runner
         self.metric_values_per_iter = [self.metric_value]
 
     @property
@@ -100,9 +102,9 @@ class RemovePercentageCompareFilter:
             start_time = time.time()
             new_value = self.metric_value_for_remaining_texts(remaining_indices)
             elapsed_time = time.time() - start_time
-            # print(
-            #     f"[attempt] {self.basic_info_log()} Metric value calculation took {elapsed_time:.4f} seconds."
-            # )
+            print(
+                f"[attempt] {self.basic_info_log()} Metric value calculation took {elapsed_time:.4f} seconds."
+            )
 
             metric_change = current_value - new_value
             eps_change = self.eps * current_value
@@ -138,7 +140,7 @@ class RemovePercentageCompareFilter:
                 f"[search] {self.basic_info_log()} Mid: {mid}. Left: {left}. Right: {right}. Init texts count: {len(text_indices)}. Possible result count {len(res_indices)}."
             )
 
-            new_indices, isFinished, new_value = self.try_to_remove_texts(
+            new_remaining_indices, isFinished, new_value = self.try_to_remove_texts(
                 text_indices,
                 mid / 100,
                 initial_value,
@@ -151,14 +153,14 @@ class RemovePercentageCompareFilter:
                 )
                 return (text_indices, initial_value)
 
-            removed_successfully = len(new_indices) < len(text_indices)
+            removed_successfully = len(new_remaining_indices) < len(text_indices)
 
             if removed_successfully:
-                res_indices = new_indices
+                res_indices = new_remaining_indices
                 res_value = new_value
                 successfuly_removed_percentage = mid / 100
                 print(
-                    f"[search] {self.basic_info_log()} Removed {mid / 100}%. New value: {new_value}. New texts count: {len(new_indices)}."
+                    f"[search] {self.basic_info_log()} Removed {mid / 100}%. New value: {new_value}. New texts count: {len(new_remaining_indices)}."
                 )
                 left = mid + 1
             else:
@@ -174,18 +176,20 @@ class RemovePercentageCompareFilter:
         if self.is_finished:
             return
 
-        new_indices, new_value = self.search_for_removal_percentage(
+        new_remaining_indices, new_value = self.search_for_removal_percentage(
             self.current_indices, self.metric_value
         )
-        successfuly_shrinked = len(new_indices) < len(self.current_indices)
+        successfuly_shrinked = len(new_remaining_indices) < len(self.current_indices)
 
-        self.current_indices = new_indices
+        self.current_indices = new_remaining_indices
         self.metric_value = new_value
         self.is_finished = (not successfuly_shrinked) or len(self.current_indices) <= 2
         if not self.is_finished:
             self.iteration += 1
             self.texts_count_per_iter.append(len(self.current_indices))
             self.metric_values_per_iter.append(self.metric_value)
+
+        self.tests_runner.execute()
 
     def plot_info(self) -> PercentageFilterPlotInfo:
         return PercentageFilterPlotInfo(

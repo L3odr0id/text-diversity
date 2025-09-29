@@ -196,6 +196,11 @@ def main() -> None:
         action="store_true",
         help="Add remove percentage filter plot",
     )
+    parser.add_argument(
+        "--test-runner-output-path",
+        type=str,
+        help="Path to the output of the test runner",
+    )
     args = parser.parse_args()
 
     directory = args.directory
@@ -203,7 +208,7 @@ def main() -> None:
     output_file = args.output
     shuffle = args.shuffle
     add_filter_plot = args.add_filter_plot
-
+    test_runner_output_path = args.test_runner_output_path
     files_list = FilesList(dir=directory, shuffle=shuffle, max_files=max_files)
 
     # levenshtein_distance_normalized = LevenshteinDistanceNormalized(
@@ -298,7 +303,7 @@ def main() -> None:
 
     num_plot_configs = len(plot_configs)
     if add_filter_plot:
-        total_axes = num_plot_configs + 2
+        total_axes = num_plot_configs + 3
     else:
         total_axes = num_plot_configs
 
@@ -329,11 +334,15 @@ def main() -> None:
                 max_tries=10,
             ),
             output_file=output_file,
+            test_runner_output_path=test_runner_output_path,
         )
 
         remove_percentage_axes = axes[num_plot_configs:]
         remove_percentage_plot.draw(
-            fig, remove_percentage_axes[0], remove_percentage_axes[1]
+            fig,
+            remove_percentage_axes[0],
+            remove_percentage_axes[1],
+            remove_percentage_axes[2],
         )
 
     # IterativePlotConfig(
