@@ -1,5 +1,4 @@
-import matplotlib.pyplot as plt
-from typing import List, Dict, Tuple, Optional
+from typing import List
 
 from texts_diversity.plot_config import PlotConfig
 from texts_diversity.plot import Plot
@@ -7,9 +6,7 @@ from texts_diversity.utils import save_plot_safely
 
 
 class PlotsList:
-    def __init__(
-        self, configs: List[PlotConfig], title: str, output_file: str, fig, axes
-    ):
+    def __init__(self, configs: List[PlotConfig], title: str, output_file: str, fig):
         self.configs = configs
         self.x_values = []
         self.y_values = {
@@ -19,7 +16,6 @@ class PlotsList:
         self.title = title
         self.output_file = output_file
         self.fig = fig
-        self.axes = axes
 
     def add_x_value(self, x_value: int):
         self.x_values.append(x_value)
@@ -34,29 +30,43 @@ class PlotsList:
                 self.y_values[plot_config][calc_info].append(y_value)
 
     def draw(self):
-
         fig = self.fig
-        axes = self.axes
-        assert len(axes) == len(
-            self.configs
-        ), f"Number of axes ({len(axes)}) must equal number of configs ({len(self.configs)})"
 
-        for idx, plot_config in enumerate(self.configs):
-            series = {}
-            for calc_info in plot_config.calc_infos:
-                # Create unique label combining metric and algorithm names
+        for plot_config in self.configs:
+            # Group series by axis to avoid overriding
+            axis_series = {}
+            axis_series_colors = {}
+
+            for idx, calc_info in enumerate(plot_config.calc_infos):
+                ax = plot_config.axes[idx]
+                ax_id = id(ax)
+
+                if ax_id not in axis_series:
+                    axis_series[ax_id] = {}
+                    axis_series_colors[ax_id] = {}
+
                 label = f"{calc_info.metric.name} ({calc_info.distances.algo.name})"
-                series[label] = self.y_values[plot_config][calc_info]
+                axis_series[ax_id][label] = self.y_values[plot_config][calc_info]
+                axis_series_colors[ax_id][label] = calc_info.distances.algo.color
 
-            plot = Plot(
-                ax=axes[idx],
-                x_values=self.x_values,
-                x_name="Number of files",
-                series=series,
-                y_name="Metric values",
-                title=plot_config.name,
-            )
-            plot.draw()
+            for ax_id, series in axis_series.items():
+                ax = None
+                for idx, calc_info in enumerate(plot_config.calc_infos):
+                    if id(plot_config.axes[idx]) == ax_id:
+                        ax = plot_config.axes[idx]
+                        break
+
+                if ax is not None:
+                    plot = Plot(
+                        ax=ax,
+                        x_values=self.x_values,
+                        x_name="Number of files",
+                        series=series,
+                        y_name="Metric values",
+                        title=plot_config.name,
+                        series_colors=axis_series_colors[ax_id],
+                    )
+                    plot.draw()
 
         fig.suptitle(self.title)
         fig.tight_layout(rect=[0, 0.03, 1, 0.95])

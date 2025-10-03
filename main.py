@@ -1,5 +1,6 @@
 import argparse
 import math
+import tempfile
 import os
 import random
 from typing import List, Tuple, Callable
@@ -27,10 +28,11 @@ from texts_diversity.calc_info import CalcInfo
 from utils import cis_same_metric
 from texts_diversity.iterative_plot_config import IterativePlotConfig
 from texts_diversity.algo import CompressAlgo
-from TDSMetric import TDSMetric
+from src.TDSM.TDS_metric import TDSMetric
 from remove_percentage_compare_metric import RemovePercentageCompareFilter
 from remove_percentage_compare_plot import RemovePercentageComparePlot
-from TDS_metric_plot import TDSMetricPlot
+from src.TDSM.TDS_metric_plot import TDSMetricPlot
+from tests_runner import TestsRunner, TestsRunnerFolder
 
 
 # def calc_novelty_metric(distances: Distances) -> float:
@@ -141,37 +143,26 @@ def lzma_compress(text: str) -> bytes:
     return LZMANCD()._compress(bytes(text, "utf-8"))
 
 
-lzma_algo_compress = CompressAlgo(name="LZMA", func=lzma_compress)
+lzma_algo_compress = CompressAlgo(name="LZMA", func=lzma_compress, color="royalblue")
 
 
 def entropy_compress(text: str) -> bytes:
     return EntropyNCD()._compress(bytes(text, "utf-8"))
 
 
-entropy_algo_compress = CompressAlgo(name="Entropy", func=entropy_compress)
+entropy_algo_compress = CompressAlgo(
+    name="Entropy", func=entropy_compress, color="darkorange"
+)
 
-lzma_algo = Algo("LZMANCD", LZMANCD().distance)
-entropy_algo = Algo("EntropyNCD", EntropyNCD().distance)
-entropy_algo_x5 = Algo("EntropyNCD * 5", custom_entropy)
+lzma_algo = Algo("LZMANCD", LZMANCD().distance, color="royalblue")
+entropy_algo = Algo("EntropyNCD", EntropyNCD().distance, color="darkorange")
+entropy_algo_x5 = Algo("EntropyNCD * 5", custom_entropy, color="chocolate")
 poisson_metric = Metric("Poisson_dist", calc_poisson_distribution)
 poisson_mins_metric = Metric("Poisson_mins", calc_poisson_mins)
 
 
-def filters_list_for_each(
-    calc_infos: List[CalcInfo],
-    files_list: FilesList,
-    eps: float,
-    max_tries: int,
-) -> List[RemovePercentageCompareFilter]:
-    return [
-        RemovePercentageCompareFilter(
-            calc_info=calc_info,
-            eps=eps,
-            max_tries=max_tries,
-            initial_texts=files_list.get_texts(),
-        )
-        for calc_info in calc_infos
-    ]
+def poisson_dist_metric():
+    return Metric(name="Poisson_dist", calc=calc_poisson_distribution)
 
 
 def main() -> None:
@@ -192,14 +183,25 @@ def main() -> None:
         help="Randomly shuffle filenames instead of sorting them",
     )
     parser.add_argument(
-        "--add-filter-plot",
-        action="store_true",
-        help="Add remove percentage filter plot",
+        "--runner-command",
+        type=str,
     )
     parser.add_argument(
-        "--test-runner-output-path",
+        "--errors-report-file-path",
         type=str,
         help="Path to the output of the test runner",
+    )
+    parser.add_argument(
+        "--relative-eps",
+        type=float,
+        default=0.001,
+        help="Relative epsilon for filter (default: 0.001)",
+    )
+    parser.add_argument(
+        "--max-tries",
+        type=int,
+        default=10,
+        help="Maximum number of tries for each filter attempt (default: 10)",
     )
     args = parser.parse_args()
 
@@ -207,111 +209,50 @@ def main() -> None:
     max_files = args.max_files
     output_file = args.output
     shuffle = args.shuffle
-    add_filter_plot = args.add_filter_plot
-    test_runner_output_path = args.test_runner_output_path
+    runner_cmd = args.runner_command
+    errors_report_file_path = args.errors_report_file_path
+    relative_eps = args.relative_eps
+    max_tries = args.max_tries
+
     files_list = FilesList(dir=directory, shuffle=shuffle, max_files=max_files)
 
-    # levenshtein_distance_normalized = LevenshteinDistanceNormalized(
-    #     files_list=files_list
-    # )
-    # levenshtein_distance_normalized_algo = Algo(
-    #     "Levenshtein Normalized Distance", levenshtein_distance_normalized.distance
-    # )
-
-    calc_infos = cis_same_metric(
-        algos=[
-            Algo("EntropyNCD * 5", custom_entropy),
-            Algo("EntropyNCD", EntropyNCD().distance),
-            Algo("LZMANCD", LZMANCD().distance),
-            Algo("Always 0", always_0),
-            Algo("Always 1", always_1),
-        ],
-        metric=lambda: Metric(name="Poisson_dist", calc=calc_poisson_distribution),
-    )
-
-    plot_configs = [
-        # PlotConfig(
-        #     name="Mean distance vs number of files",
-        #     calc_infos=cis_same_metric(
-        #         algos=[
-        #             # Algo("EntropyNCD * 5", custom_entropy),
-        #             # Algo("EntropyNCD", EntropyNCD().distance),
-        #             # Algo("LZMANCD", LZMANCD().distance),
-        #             # levenshtein_distance_normalized_algo,
-        #             Algo("Always 0", always_0),
-        #             Algo("Always 1", always_1),
-        #         ],
-        #         metric=lambda: Metric(name="Min Distance", calc=calc_mean_metric),
-        #     ),
-        # ),
-        # PlotConfig(
-        #     name="Min distance vs number of files",
-        #     calc_infos=cis_same_metric(
-        #         algos=[
-        #             Algo("EntropyNCD * 5", custom_entropy),
-        #             Algo("EntropyNCD", EntropyNCD().distance),
-        #             Algo("LZMANCD", LZMANCD().distance),
-        #             Algo("Always 0", always_0),
-        #             Algo("Always 1", always_1),
-        #         ],
-        #         metric=lambda: Metric(
-        #             name="Min Distance", calc=MinDistanceMetric().calc
-        #         ),
-        #     ),
-        # ),
-        # PlotConfig(
-        #     name="Mean distance plot",
-        #     calc_infos=[
-        #         CalcInfo(
-        #             metric=Metric(name="Add min distance", calc=MinDistanceMetric().calc),
-        #             algo=Algo("EntropyNCD * 5", custom_entropy),
-        #         ),
-        #         CalcInfo(
-        #             metric=Metric(name="Add min distance", calc=MinDistanceMetric().calc),
-        #             algo=Algo("EntropyNCD", EntropyNCD().distance),
-        #         ),
-        #         CalcInfo(
-        #             metric=Metric(name="Add min distance", calc=MinDistanceMetric().calc),
-        #             algo=Algo("LZMANCD", LZMANCD().distance),
-        #         ),
-        #         CalcInfo(
-        #             metric=Metric(name="Add min distance", calc=MinDistanceMetric().calc),
-        #             algo=Algo("Always 0", always_0),
-        #         ),
-        #         CalcInfo(
-        #             metric=Metric(name="Add min distance", calc=MinDistanceMetric().calc),
-        #             algo=Algo("Always 1", always_1),
-        #         ),
-        #     ],
-        # ),
-        # PlotConfig(
-        #     name="Min distance vs number of files",
-        #     calc_infos=cis_same_metric(
-        #         algos=[
-        #             Algo("EntropyNCD", EntropyNCD().distance),
-        #         ],
-        #         metric=lambda: Metric(
-        #             name="Min Distance", calc=MinDistanceMetric().calc
-        #         ),
-        #     ),
-        # ),
-        PlotConfig(
-            name="Poisson_mins distance vs number of files",
-            calc_infos=calc_infos,
-        ),
+    calc_infos_list = [
+        CalcInfo(metric=poisson_dist_metric(), algo=lzma_algo),
+        CalcInfo(metric=poisson_dist_metric(), algo=entropy_algo),
     ]
 
-    num_plot_configs = len(plot_configs)
-    if add_filter_plot:
-        total_axes = num_plot_configs + 3
-    else:
-        total_axes = num_plot_configs
+    plots_per_row = 5  # TextsDiversity + 2 filter + 2 runner plots
+    total_rows = len(calc_infos_list)
+    total_cols = plots_per_row
 
-    fig, axes = plt.subplots(1, total_axes, figsize=(6 * total_axes, 6))
-    if total_axes == 1:
-        axes = [axes]
+    fig, axes = plt.subplots(
+        total_rows,
+        total_cols,
+        figsize=(6 * total_cols, 6 * total_rows),
+    )
 
-    plot_configs_axes = axes[:num_plot_configs]
+    axes_flat = axes.flatten()
+
+    plot_configs = []
+
+    for i, calc_info in enumerate(calc_infos_list):
+        row_start_idx = i * plots_per_row
+        plot_configs.append(
+            PlotConfig(
+                name=f"{calc_info.distances.algo.name} - Poisson distance vs number of files",
+                calc_infos=[calc_info],
+                axes=[axes_flat[row_start_idx]],  # First plot in each row
+            )
+        )
+
+    temp_dir = tempfile.TemporaryDirectory()
+
+    tests_runner_folder = TestsRunnerFolder(path=temp_dir.name)
+    tests_runner = TestsRunner(
+        command=runner_cmd,
+        folder=tests_runner_folder,
+        errors_report_file_path=errors_report_file_path,
+    )
 
     TextsDiversity(
         min_files_for_analysis=10,
@@ -321,29 +262,46 @@ def main() -> None:
             title="Plots list title",
             output_file=output_file,
             fig=fig,
-            axes=plot_configs_axes,
         ),
     ).draw_plots()
 
-    if add_filter_plot:
-        remove_percentage_plot = RemovePercentageComparePlot(
-            filters=filters_list_for_each(
-                calc_infos=calc_infos,
-                files_list=files_list,
-                eps=0.001,
-                max_tries=10,
-            ),
-            output_file=output_file,
-            test_runner_output_path=test_runner_output_path,
+    remove_percentage_plots = []
+    compare_calc_infos_list = list(reversed(calc_infos_list))
+
+    for i in range(len(calc_infos_list)):
+        main_calc_info = calc_infos_list[i]
+        compare_calc_info = compare_calc_infos_list[i]
+
+        pct_filter = RemovePercentageCompareFilter(
+            main_calc_info=main_calc_info,
+            compare_calc_info=compare_calc_info,
+            relative_eps=relative_eps,
+            max_tries=max_tries,
+            tests_runner=tests_runner,
+            files_list=files_list,
+            test_runner_folder=tests_runner_folder,
+            report_file_path=errors_report_file_path,
         )
 
-        remove_percentage_axes = axes[num_plot_configs:]
+        remove_percentage_plot = RemovePercentageComparePlot(
+            pct_filter=pct_filter,
+            output_file=output_file,
+            errors_report_file_path=errors_report_file_path,
+        )
+
+        remove_percentage_plots.append(remove_percentage_plot)
+
+    for i, remove_percentage_plot in enumerate(remove_percentage_plots):
+        row_start_idx = i * plots_per_row
         remove_percentage_plot.draw(
             fig,
-            remove_percentage_axes[0],
-            remove_percentage_axes[1],
-            remove_percentage_axes[2],
+            axes_flat[row_start_idx + 1],
+            axes_flat[row_start_idx + 2],
+            axes_flat[row_start_idx + 3],
+            axes_flat[row_start_idx + 4],
         )
+
+    temp_dir.cleanup()
 
     # IterativePlotConfig(
     #     name="TDS Metric",

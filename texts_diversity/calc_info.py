@@ -10,3 +10,9 @@ class CalcInfo:
     def __init__(self, metric: Metric, algo: Algo):
         self.metric = metric
         self.distances = TextsDistances(algo=algo)
+
+    def label(self) -> str:
+        return f"{self.metric.name} ({self.distances.algo.name})"
+
+    def value(self, distances: TextsDistances) -> float:
+        return self.metric.calc(distances)

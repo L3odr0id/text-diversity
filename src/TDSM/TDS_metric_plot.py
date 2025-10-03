@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from texts_diversity.files_list import FilesList
 from texts_diversity.plot import Plot
 from texts_diversity.utils import save_plot_safely
-from TDSMetric import TDSMetric
+from src.TDSM.TDS_metric import TDSMetric
 
 
 class TDSMetricPlot:

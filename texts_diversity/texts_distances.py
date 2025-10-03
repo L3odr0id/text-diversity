@@ -42,7 +42,7 @@ class TextsDistances:
         ] is not None:
             return self.data[(to_idx, from_idx)]
         else:
-            raise ValueError(f"Distance ({from_idx}, {to_idx}) is not in storage")
+            raise ValueError(f"Distance ({from_idx}, {to_idx}) does not exist")
 
     def find_minimax_center(self) -> Tuple[int, float, Dict[int, float]]:
         """Find the most centered text using minimax method."""

@@ -2,78 +2,104 @@ import time
 import random
 from dataclasses import dataclass
 from typing import List, Union
-import matplotlib.pyplot as plt
 
-from texts_diversity.plot import Plot
-from texts_diversity.utils import save_plot_safely
-
-from texts_diversity.iterative_metric import (
-    IterativeMetric,
-    IterativeMetricCalculationResult,
-)
-from texts_diversity.metric import Metric
 from texts_diversity.texts_distances import TextsDistances
-from texts_diversity.algo import Algo
 from texts_diversity.calc_info import CalcInfo
-from tests_runner import TestsRunner
+from texts_diversity.files_list import FilesList
+from tests_runner import TestsRunner, TestsRunnerResult, TestsRunnerFolder
+
+from src.basic.plot_data import PlotData
 
 
 @dataclass
 class PercentageFilterPlotInfo:
     iterations: int
     texts_count_per_iter: List[int]
-    metric_values_per_iter: List[float]
-    metric_name: str
-    algo_name: str
+    left_y_name: str
+    main_metric_label: str
+    main_metric_values: List[float]
+    main_metric_color: str
+    right_y_name: str
+    compare_metric_label: str
+    compare_metric_values: List[float]
+    compare_metric_color: str
 
 
 class RemovePercentageCompareFilter:
     def __init__(
         self,
-        calc_info: CalcInfo,
-        eps: float,
+        main_calc_info: CalcInfo,
+        compare_calc_info: CalcInfo,
+        relative_eps: float,
         max_tries: int,
-        initial_texts: List[str],
         tests_runner: TestsRunner,
+        files_list: FilesList,
+        test_runner_folder: TestsRunnerFolder,
+        report_file_path: str,
     ):
-        self.metric = calc_info.metric
-        self.algo = calc_info.distances.algo
-        self.eps = eps
+        self.total_files_count = len(files_list.file_paths)
+        self.main_calc_info = main_calc_info
+        self.compare_calc_info = compare_calc_info
+        self.relative_eps = relative_eps
         self.max_tries = max_tries
-        self.original_texts = initial_texts
-        self.current_indices = list(range(len(initial_texts)))
+        self.current_indices = list(range(self.total_files_count))
         self.iteration = 0
-        self.texts_count_per_iter = [len(initial_texts)]
-        self.metric_values_per_iter = []
         self.is_finished = False
-        self.all_distances = calc_info.distances
-        self.metric_value = self.metric.calc(self.all_distances)
-        self.original_texts_indices_set = set(range(len(initial_texts)))
+        self.metric_value = self.main_calc_info.value(self.main_calc_info.distances)
+        initial_compare_metric_value = self.compare_calc_info.value(
+            self.compare_calc_info.distances
+        )
+        self.original_texts_indices_set = set(range(self.total_files_count))
         self.tests_runner = tests_runner
-        self.metric_values_per_iter = [self.metric_value]
+        self.files_list = files_list
+
+        self.plot_data = PlotData(
+            x_values=[],
+            x_name="Not used",
+            left_series={self.main_calc_info.label(): [self.metric_value]},
+            left_y_name=f"Main metric value",
+            right_y_name=f"Compare metric value",
+            right_series={
+                self.compare_calc_info.label(): [initial_compare_metric_value]
+            },
+            title="Metric values vs Filter iteration",
+        )
+        self.texts_count_per_iter = [self.total_files_count]
+
+        self.tests_runner_folder = test_runner_folder
+        self.tests_runner_folder.setup()
+        self.tests_runner_folder.copy_files(self.filtered_texts)
+        tests_runner.execute()
+        self.original_errors_count = TestsRunnerResult(report_file_path).read_result()
 
     @property
     def filtered_texts(self) -> List[str]:
-        return [self.original_texts[i] for i in self.current_indices]
+        return [self.files_list.file_paths[i] for i in self.current_indices]
+
+    def text_distance_for_remaining_indices(
+        self, text_distances: TextsDistances, remaining_text_indices: List[int]
+    ) -> TextsDistances:
+        text_distances_copy = text_distances.copy()
+        texts_to_remove = self.original_texts_indices_set - set(remaining_text_indices)
+        text_distances_copy.remove_list(list(texts_to_remove))
+        return text_distances_copy
 
     def metric_value_for_remaining_texts(
         self, remaining_text_indices: List[int]
     ) -> float:
-        distances_copy = self.all_distances.copy()
-
-        texts_to_remove = self.original_texts_indices_set - set(remaining_text_indices)
-        print(
-            f"texts_to_remove: {len(texts_to_remove)}. distances_len_before: {len(distances_copy.data)}"
+        distances_copy = self.text_distance_for_remaining_indices(
+            self.main_calc_info.distances, remaining_text_indices
         )
-        distances_copy.remove_list(list(texts_to_remove))
-        print(
-            f"texts_to_remove: {len(texts_to_remove)}. distances_len_after: {len(distances_copy.data)}"
-        )
+        return self.main_calc_info.value(distances_copy)
 
-        return self.metric.calc(distances_copy)
+    def compare_metric_value_for_remaining_texts(self) -> float:
+        distances_copy = self.text_distance_for_remaining_indices(
+            self.compare_calc_info.distances, self.current_indices
+        )
+        return self.compare_calc_info.value(distances_copy)
 
     def basic_info_log(self) -> str:
-        return f"Metric: {self.metric.name}. Algo: {self.algo.name}. Iter: {self.iteration}."
+        return f"Metric: {self.main_calc_info.metric.name}. Algo: {self.main_calc_info.distances.algo.name}. Iter: {self.iteration}."
 
     def try_to_remove_texts(
         self,
@@ -107,9 +133,9 @@ class RemovePercentageCompareFilter:
             )
 
             metric_change = current_value - new_value
-            eps_change = self.eps * current_value
+            eps_change = self.relative_eps * current_value
             print(
-                f"[attempt] {self.basic_info_log()} Try {attempt + 1}. Remove {removal_percentage * 100}% ({num_to_remove}). Old {current_value}. New {new_value}. Diff: {metric_change}. eps: {self.eps}. eps*prev_value: {eps_change}."
+                f"[attempt] {self.basic_info_log()} Try {attempt + 1}. Remove {removal_percentage * 100}% ({num_to_remove}). Old {current_value}. New {new_value}. Diff: {metric_change}. relative_eps: {self.relative_eps}. relative_eps*prev_value: {eps_change}."
             )
             if metric_change <= eps_change:
                 print(
@@ -186,16 +212,32 @@ class RemovePercentageCompareFilter:
         self.is_finished = (not successfuly_shrinked) or len(self.current_indices) <= 2
         if not self.is_finished:
             self.iteration += 1
-            self.texts_count_per_iter.append(len(self.current_indices))
-            self.metric_values_per_iter.append(self.metric_value)
+            self.plot_data.left_series[self.main_calc_info.label()].append(
+                self.metric_value
+            )
 
+            compare_metric_value = self.compare_metric_value_for_remaining_texts()
+            self.plot_data.right_series[self.compare_calc_info.label()].append(
+                compare_metric_value
+            )
+
+            self.texts_count_per_iter.append(len(self.current_indices))
+
+        self.tests_runner_folder.copy_files(self.filtered_texts)
         self.tests_runner.execute()
 
     def plot_info(self) -> PercentageFilterPlotInfo:
         return PercentageFilterPlotInfo(
             iterations=self.iteration,
             texts_count_per_iter=self.texts_count_per_iter,
-            metric_values_per_iter=self.metric_values_per_iter,
-            metric_name=self.metric.name,
-            algo_name=self.algo.name,
+            main_metric_label=self.main_calc_info.label(),
+            main_metric_values=self.plot_data.left_series[self.main_calc_info.label()],
+            main_metric_color=self.main_calc_info.distances.algo.color,
+            compare_metric_label=self.compare_calc_info.label(),
+            compare_metric_values=self.plot_data.right_series[
+                self.compare_calc_info.label()
+            ],
+            compare_metric_color=self.compare_calc_info.distances.algo.color,
+            left_y_name=self.plot_data.left_y_name,
+            right_y_name=self.plot_data.right_y_name,
         )

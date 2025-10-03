@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 
 
 @dataclass
@@ -10,12 +10,23 @@ class Plot:
     y_name: str
     title: str
     x_name: str
+    series_colors: Optional[Dict[str, str]] = None
 
     def draw(self):
         self.ax.clear()
 
         for label, y_values in self.series.items():
-            self.ax.plot(self.x_values, y_values, marker="o", linewidth=1, label=label)
+            color = None
+            if self.series_colors and label in self.series_colors:
+                color = self.series_colors[label]
+            self.ax.plot(
+                self.x_values,
+                y_values,
+                marker="o",
+                linewidth=1,
+                label=label,
+                color=color,
+            )
         self.ax.set_xlabel(self.x_name)
         self.ax.set_ylabel(self.y_name)
         self.ax.set_title(self.title)
