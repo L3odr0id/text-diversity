@@ -68,12 +68,12 @@ class RemovePercentageCompareFilter:
 
         self.tests_runner_folder = test_runner_folder
         self.tests_runner_folder.setup()
-        self.tests_runner_folder.copy_files(self.filtered_texts)
+        self.tests_runner_folder.copy_files(self.filtered_file_paths)
         tests_runner.execute()
         self.original_errors_count = TestsRunnerResult(report_file_path).read_result()
 
     @property
-    def filtered_texts(self) -> List[str]:
+    def filtered_file_paths(self) -> List[str]:
         return [self.files_list.file_paths[i] for i in self.current_indices]
 
     def text_distance_for_remaining_indices(
@@ -223,7 +223,7 @@ class RemovePercentageCompareFilter:
 
             self.texts_count_per_iter.append(len(self.current_indices))
 
-        self.tests_runner_folder.copy_files(self.filtered_texts)
+        self.tests_runner_folder.copy_files(self.filtered_file_paths)
         self.tests_runner.execute()
 
     def plot_info(self) -> PercentageFilterPlotInfo:

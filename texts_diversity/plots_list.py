@@ -6,14 +6,13 @@ from texts_diversity.utils import save_plot_safely
 
 
 class PlotsList:
-    def __init__(self, configs: List[PlotConfig], title: str, output_file: str, fig):
+    def __init__(self, configs: List[PlotConfig], output_file: str, fig):
         self.configs = configs
         self.x_values = []
         self.y_values = {
             plot_config: {calc_info: [] for calc_info in plot_config.calc_infos}
             for plot_config in configs
         }
-        self.title = title
         self.output_file = output_file
         self.fig = fig
 
@@ -67,8 +66,5 @@ class PlotsList:
                         series_colors=axis_series_colors[ax_id],
                     )
                     plot.draw()
-
-        fig.suptitle(self.title)
-        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
         save_plot_safely(fig, self.output_file)

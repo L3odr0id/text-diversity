@@ -34,6 +34,7 @@ from remove_percentage_compare_plot import RemovePercentageComparePlot
 from src.TDSM.TDS_metric_plot import TDSMetricPlot
 from tests_runner import TestsRunner, TestsRunnerFolder
 
+from src.pct_filter.filter_result import FilterResult
 
 # def calc_novelty_metric(distances: Distances) -> float:
 #     return distances.min_distance_from_last() or 0.0
@@ -203,6 +204,12 @@ def main() -> None:
         default=10,
         help="Maximum number of tries for each filter attempt (default: 10)",
     )
+    parser.add_argument(
+        "--report-pattern",
+        type=str,
+        required=True,
+        help="Report pattern for filter results",
+    )
     args = parser.parse_args()
 
     directory = args.directory
@@ -213,6 +220,7 @@ def main() -> None:
     errors_report_file_path = args.errors_report_file_path
     relative_eps = args.relative_eps
     max_tries = args.max_tries
+    report_pattern = args.report_pattern
 
     files_list = FilesList(dir=directory, shuffle=shuffle, max_files=max_files)
 
@@ -228,8 +236,10 @@ def main() -> None:
     fig, axes = plt.subplots(
         total_rows,
         total_cols,
-        figsize=(6 * total_cols, 6 * total_rows),
+        figsize=(7 * total_cols, 6 * total_rows),
     )
+    fig.tight_layout(w_pad=8, h_pad=5, rect=[0.05, 0.05, 0.95, 0.95])
+    fig.suptitle("Iterative tests set analysis", fontsize=16)
 
     axes_flat = axes.flatten()
 
@@ -259,13 +269,12 @@ def main() -> None:
         files_list=files_list,
         plots_list=PlotsList(
             configs=plot_configs,
-            title="Plots list title",
             output_file=output_file,
             fig=fig,
         ),
     ).draw_plots()
 
-    remove_percentage_plots = []
+    remove_percentage_plots: List[RemovePercentageComparePlot] = []
     compare_calc_infos_list = list(reversed(calc_infos_list))
 
     for i in range(len(calc_infos_list)):
@@ -300,6 +309,17 @@ def main() -> None:
             axes_flat[row_start_idx + 3],
             axes_flat[row_start_idx + 4],
         )
+
+    lzma_filter = remove_percentage_plots[0].pct_filter
+    filter_result = FilterResult(
+        file_paths=lzma_filter.filtered_file_paths,
+    )
+    filter_result.save(
+        report_pattern=report_pattern,
+        range_start=0,
+        range_end=1000,
+        stage=0,
+    )
 
     temp_dir.cleanup()
 

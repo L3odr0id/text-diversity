@@ -24,20 +24,19 @@ class RemovePercentageComparePlot:
         self.ax2 = None  # Store twin axis to avoid duplication. Very bad code because matplotlib has an awful interface
 
     def plot_metrics_comparison(self, ax):
-        """Plot main and compare metrics on dual y-axis"""
-        ax.clear()  # TODO: perfomance. Add just a new series value instead of clearing the plot
+        ax.clear()
 
         plot_info = self.pct_filter.plot_info()
         iterations = list(range(plot_info.iterations + 1))
 
-        if self.ax2 is None:
-            self.ax2 = ax.twinx()
-        else:
-            self.ax2.clear()
+        if self.ax2 is not None:
+            self.ax2.remove()
+        self.ax2 = ax.twinx()
 
         line1 = ax.plot(
             iterations,
             plot_info.main_metric_values,
+            marker="o",
             color=plot_info.main_metric_color,
             label=plot_info.main_metric_label,
         )
@@ -45,6 +44,7 @@ class RemovePercentageComparePlot:
         line2 = self.ax2.plot(
             iterations,
             plot_info.compare_metric_values,
+            marker="o",
             color=plot_info.compare_metric_color,
             label=plot_info.compare_metric_label,
         )
@@ -66,7 +66,6 @@ class RemovePercentageComparePlot:
         ax.legend(lines, labels, loc="best")
 
     def plot_texts_count(self, ax):
-        """Plot texts count vs iteration"""
         ax.clear()
 
         plot_info = self.pct_filter.plot_info()
@@ -76,7 +75,6 @@ class RemovePercentageComparePlot:
             iterations,
             plot_info.texts_count_per_iter,
             marker="o",
-            linewidth=2,
             color="green",
             label="Number of texts",
         )
@@ -100,17 +98,19 @@ class RemovePercentageComparePlot:
 
         original_errors_count = self.pct_filter.original_errors_count
 
-        sorted_errors = sorted(errors_count, key=lambda x: x.error_id)
-        error_ids = [error.error_id for error in sorted_errors]
-        current_counts = [getattr(error, count_field) for error in sorted_errors]
+        sorted_original_errors = sorted(original_errors_count, key=lambda x: x.error_id)
+        error_ids = [error.error_id for error in sorted_original_errors]
+        original_counts = [
+            getattr(error, count_field) for error in sorted_original_errors
+        ]
 
-        original_counts = []
+        current_counts = []
         for error_id in error_ids:
-            original_error = next(
-                (e for e in original_errors_count if e.error_id == error_id), None
+            current_error = next(
+                (e for e in errors_count if e.error_id == error_id), None
             )
-            original_counts.append(
-                getattr(original_error, count_field) if original_error else 0
+            current_counts.append(
+                getattr(current_error, count_field) if current_error else 0
             )
 
         x_positions = range(len(error_ids))
@@ -171,5 +171,4 @@ class RemovePercentageComparePlot:
                 "Errors Count vs Error ID (Overall)",
             )
 
-            plt.tight_layout()
             save_plot_safely(fig, self.output_file)
