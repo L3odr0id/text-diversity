@@ -35,11 +35,14 @@ class TestsRunnerFolder:
 
 class TestsRunner:
     def __init__(
-        self, command: str, folder: TestsRunnerFolder, errors_report_file_path: str
+        self,
+        path_to_runner_main: str,
+        folder: TestsRunnerFolder,
+        errors_report_file_path: str,
     ):
         self.command = (
-            """
-python3 .github/workflows/runner/main.py \
+            f"""
+python3 {path_to_runner_main} \
     --gen-path """
             + f'"{folder.path}"'
             + """ \

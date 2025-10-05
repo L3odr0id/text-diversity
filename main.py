@@ -184,7 +184,7 @@ def main() -> None:
         help="Randomly shuffle filenames instead of sorting them",
     )
     parser.add_argument(
-        "--runner-command",
+        "--runner-main-path",
         type=str,
     )
     parser.add_argument(
@@ -216,7 +216,7 @@ def main() -> None:
     max_files = args.max_files
     output_file = args.output
     shuffle = args.shuffle
-    runner_cmd = args.runner_command
+    path_to_runner_main = args.runner_main_path
     errors_report_file_path = args.errors_report_file_path
     relative_eps = args.relative_eps
     max_tries = args.max_tries
@@ -259,7 +259,7 @@ def main() -> None:
 
     tests_runner_folder = TestsRunnerFolder(path=temp_dir.name)
     tests_runner = TestsRunner(
-        command=runner_cmd,
+        path_to_runner_main=path_to_runner_main,
         folder=tests_runner_folder,
         errors_report_file_path=errors_report_file_path,
     )
