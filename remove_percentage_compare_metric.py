@@ -45,6 +45,7 @@ class RemovePercentageCompareFilter:
         self.current_indices = list(range(self.total_files_count))
         self.iteration = 0
         self.is_finished = False
+        self.report_file_path = report_file_path
         self.metric_value = self.main_calc_info.value(self.main_calc_info.distances)
         initial_compare_metric_value = self.compare_calc_info.value(
             self.compare_calc_info.distances
@@ -71,6 +72,9 @@ class RemovePercentageCompareFilter:
         self.tests_runner_folder.copy_files(self.filtered_file_paths)
         tests_runner.execute()
         self.original_errors_count = TestsRunnerResult(report_file_path).read_result()
+        self.errors_count_per_iteration = [
+            self.original_errors_count
+        ]  # Store errors count for each iteration
 
     @property
     def filtered_file_paths(self) -> List[str]:
@@ -225,6 +229,8 @@ class RemovePercentageCompareFilter:
 
         self.tests_runner_folder.copy_files(self.filtered_file_paths)
         self.tests_runner.execute()
+        current_errors_count = TestsRunnerResult(self.report_file_path).read_result()
+        self.errors_count_per_iteration.append(current_errors_count)
 
     def plot_info(self) -> PercentageFilterPlotInfo:
         return PercentageFilterPlotInfo(

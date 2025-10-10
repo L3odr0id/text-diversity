@@ -14,9 +14,11 @@ class TextsDistances:
         self.normalize = normalize
 
     def add_dist(self, old_texts: List[str], new_text: str):
+        """
+        Calculate distances with all previous texts
+        """
         current_idx = len(old_texts)
 
-        # Calculate distances with all previous texts
         for prev_idx, prev_text in enumerate(old_texts):
             try:
                 distance_value = self.algo.func(new_text, prev_text)

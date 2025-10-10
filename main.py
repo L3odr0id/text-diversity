@@ -33,8 +33,9 @@ from remove_percentage_compare_metric import RemovePercentageCompareFilter
 from remove_percentage_compare_plot import RemovePercentageComparePlot
 from src.TDSM.TDS_metric_plot import TDSMetricPlot
 from tests_runner import TestsRunner, TestsRunnerFolder
-
+from texts_diversity.utils import save_plot_safely
 from src.pct_filter.filter_result import FilterResult
+
 
 # def calc_novelty_metric(distances: Distances) -> float:
 #     return distances.min_distance_from_last() or 0.0
@@ -229,14 +230,13 @@ def main() -> None:
         CalcInfo(metric=poisson_dist_metric(), algo=entropy_algo),
     ]
 
-    plots_per_row = 5  # TextsDiversity + 2 filter + 2 runner plots
-    total_rows = len(calc_infos_list)
-    total_cols = plots_per_row
+    total_rows = 4
+    total_cols = 16
 
     fig, axes = plt.subplots(
         total_rows,
         total_cols,
-        figsize=(7 * total_cols, 6 * total_rows),
+        figsize=(10 * total_cols, 6 * total_rows),
     )
     fig.tight_layout(w_pad=8, h_pad=5, rect=[0.05, 0.05, 0.95, 0.95])
     fig.suptitle("Iterative tests set analysis", fontsize=16)
@@ -246,12 +246,12 @@ def main() -> None:
     plot_configs = []
 
     for i, calc_info in enumerate(calc_infos_list):
-        row_start_idx = i * plots_per_row
+        row_start_idx = i * total_cols
         plot_configs.append(
             PlotConfig(
                 name=f"{calc_info.distances.algo.name} - Poisson distance vs number of files",
                 calc_infos=[calc_info],
-                axes=[axes_flat[row_start_idx]],  # First plot in each row
+                axes=[axes_flat[row_start_idx]],
             )
         )
 
@@ -274,7 +274,7 @@ def main() -> None:
         ),
     ).draw_plots()
 
-    remove_percentage_plots: List[RemovePercentageComparePlot] = []
+    pct_filters: List[RemovePercentageCompareFilter] = []
     compare_calc_infos_list = list(reversed(calc_infos_list))
 
     for i in range(len(calc_infos_list)):
@@ -292,25 +292,161 @@ def main() -> None:
             report_file_path=errors_report_file_path,
         )
 
-        remove_percentage_plot = RemovePercentageComparePlot(
-            pct_filter=pct_filter,
-            output_file=output_file,
-            errors_report_file_path=errors_report_file_path,
+        pct_filters.append(pct_filter)
+
+    remove_percentage_plot = RemovePercentageComparePlot(
+        pct_filters=pct_filters,
+        output_file=output_file,
+        errors_report_file_path=errors_report_file_path,
+    )
+
+    ax1s = []
+    ax2s = []
+    for i in range(len(calc_infos_list)):
+        row_start_idx = i * total_cols
+        ax1s.append(axes_flat[row_start_idx + 1])
+        ax2s.append(axes_flat[row_start_idx + 2])
+
+    ax3s = []
+    ax4s = []
+
+    row3_start_idx = 2 * total_cols
+    for col in range(total_cols):
+        ax3s.append(axes_flat[row3_start_idx + col])
+
+    row4_start_idx = 3 * total_cols
+    for col in range(total_cols):
+        ax4s.append(axes_flat[row4_start_idx + col])
+
+    # remove_percentage_plot.draw(fig, ax1s, ax2s, ax3s, ax4s)
+
+    num_of_iterations_boxplot = 5
+    print(
+        f"Running {num_of_iterations_boxplot} independent iterations for boxplot analysis..."
+    )
+
+    initial_errors_count = pct_filters[0].original_errors_count
+    initial_test_count = pct_filters[0].total_files_count
+    error_ids = sorted([error.error_id for error in initial_errors_count])
+
+    boxplot_data = {}
+    for error_id in error_ids:
+        boxplot_data[error_id] = {"Initial": [], "LZMANCD": [], "EntropyNCD": []}
+
+    for error in initial_errors_count:
+        error_id = error.error_id
+        percentage = (
+            error.test_paths_count / initial_test_count if initial_test_count > 0 else 0
+        )
+        boxplot_data[error_id]["Initial"] = [percentage] * num_of_iterations_boxplot
+
+    for iteration_num in range(num_of_iterations_boxplot):
+        print(f"Running iteration {iteration_num + 1}/{num_of_iterations_boxplot}...")
+
+        iteration_pct_filters = []
+        for i in range(len(calc_infos_list)):
+            main_calc_info = calc_infos_list[i]
+            compare_calc_info = compare_calc_infos_list[i]
+
+            iteration_pct_filter = RemovePercentageCompareFilter(
+                main_calc_info=main_calc_info,
+                compare_calc_info=compare_calc_info,
+                relative_eps=relative_eps,
+                max_tries=max_tries,
+                tests_runner=tests_runner,
+                files_list=files_list,
+                test_runner_folder=tests_runner_folder,
+                report_file_path=errors_report_file_path,
+            )
+            iteration_pct_filters.append(iteration_pct_filter)
+
+        while not all(filter.is_finished for filter in iteration_pct_filters):
+            for pct_filter in iteration_pct_filters:
+                if not pct_filter.is_finished:
+                    pct_filter.iterate()
+
+        for i, pct_filter in enumerate(iteration_pct_filters):
+            final_errors_count = pct_filter.errors_count_per_iteration[-1]
+            current_test_count = len(pct_filter.current_indices)
+            algo_name = pct_filter.main_calc_info.distances.algo.name
+
+            error_lookup = {error.error_id: error for error in final_errors_count}
+
+            for error_id in error_ids:
+                if error_id in error_lookup:
+                    error = error_lookup[error_id]
+                    percentage = (
+                        error.test_paths_count / current_test_count
+                        if current_test_count > 0
+                        else 0
+                    )
+                else:
+                    percentage = 0.0
+
+                boxplot_data[error_id][algo_name].append(percentage)
+
+    ax_boxplot = axes_flat[4]
+    ax_boxplot.clear()
+
+    boxplot_values = []
+    boxplot_labels = []
+    boxplot_colors = []
+
+    group_positions = []
+    current_pos = 1
+
+    for error_id in error_ids:
+        group_positions.append((current_pos, current_pos + 1, current_pos + 2))
+
+        if boxplot_data[error_id]["Initial"]:
+            boxplot_values.append(boxplot_data[error_id]["Initial"])
+            boxplot_labels.append("Initial")
+            boxplot_colors.append("gray")
+
+        if boxplot_data[error_id]["LZMANCD"]:
+            boxplot_values.append(boxplot_data[error_id]["LZMANCD"])
+            boxplot_labels.append("LZMA")
+            boxplot_colors.append("royalblue")
+
+        if boxplot_data[error_id]["EntropyNCD"]:
+            boxplot_values.append(boxplot_data[error_id]["EntropyNCD"])
+            boxplot_labels.append("Entropy")
+            boxplot_colors.append("darkorange")
+
+        current_pos += 4
+
+    bp = ax_boxplot.boxplot(boxplot_values, patch_artist=True)
+
+    for patch, color in zip(bp["boxes"], boxplot_colors):
+        patch.set_facecolor(color)
+
+    x_positions = []
+    x_labels = []
+
+    for i, error_id in enumerate(error_ids):
+        group_start = group_positions[i][0]
+        x_positions.extend([group_start, group_start + 1, group_start + 2])
+        x_labels.extend(
+            [f"{error_id}\nInitial", f"{error_id}\nLZMA", f"{error_id}\nEntropy"]
         )
 
-        remove_percentage_plots.append(remove_percentage_plot)
+    ax_boxplot.set_xticks(x_positions)
+    ax_boxplot.set_xticklabels(x_labels, rotation=45, ha="right")
 
-    for i, remove_percentage_plot in enumerate(remove_percentage_plots):
-        row_start_idx = i * plots_per_row
-        remove_percentage_plot.draw(
-            fig,
-            axes_flat[row_start_idx + 1],
-            axes_flat[row_start_idx + 2],
-            axes_flat[row_start_idx + 3],
-            axes_flat[row_start_idx + 4],
-        )
+    for i, (start, mid, end) in enumerate(group_positions):
+        if i < len(group_positions) - 1:
+            ax_boxplot.axvline(x=end + 0.5, color="black", linestyle="--", alpha=0.3)
 
-    lzma_filter = remove_percentage_plots[0].pct_filter
+    ax_boxplot.set_xlabel("Error ID and Algorithm")
+    ax_boxplot.set_ylabel("Percentage of test files with error")
+    ax_boxplot.set_title(
+        f"Error Percentage distribution across {num_of_iterations_boxplot} iterations"
+    )
+    ax_boxplot.grid(True, linestyle=":", linewidth=0.5, axis="y")
+
+    save_plot_safely(fig, output_file)
+
+    lzma_filter = pct_filters[0]
     filter_result = FilterResult(
         file_paths=lzma_filter.filtered_file_paths,
     )
