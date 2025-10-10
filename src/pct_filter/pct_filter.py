@@ -46,7 +46,7 @@ class PctFilter:
             f"Metric {self.calc_info.metric.name} x algo {self.calc_info.distances.algo.name} calculation took {elapsed_time:.4f} seconds."
         )
 
-        metric_change = abs(current_value - new_value)
+        metric_change = current_value - new_value
         eps_change = self.relative_eps * current_value
         info = f"Try {attempt + 1}. Remove {removal_pct * 100}% ({num_to_remove}). Old {current_value}. New {new_value}. Diff: {metric_change}. relative_eps: {self.relative_eps}. Metric change: {metric_change}. relative_eps*prev_value: {eps_change}.  Is metric changed less than eps: {metric_change <= eps_change}"
 

@@ -47,10 +47,61 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Run box plots experiment with text corpus diversity filtering"
+    )
+    parser.add_argument(
+        "--dir",
+        type=str,
+        default="generated",
+        help="Directory containing input files (default: generated)",
+    )
+    parser.add_argument(
+        "--shuffle",
+        action="store_true",
+        help="Shuffle files list (default: False)",
+    )
+    parser.add_argument(
+        "--max-files",
+        type=int,
+        default=200,
+        help="Maximum number of files to process (default: 200)",
+    )
+    parser.add_argument(
+        "--output-plot",
+        type=str,
+        default="test_box_plots.svg",
+        help="Path for output plot file (default: test_box_plots.svg)",
+    )
+    parser.add_argument(
+        "--runner-main",
+        type=str,
+        default="verilog-model/.github/workflows/runner/main.py",
+        help="Path to runner main.py (default: verilog-model/.github/workflows/runner/main.py)",
+    )
+    parser.add_argument(
+        "--errors-report",
+        type=str,
+        default="errors_report.json",
+        help="Path to errors report JSON file (default: errors_report.json)",
+    )
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=500,
+        help="Number of iterations to run (default: 500)",
+    )
+    return parser.parse_args()
+
+
+args = parse_args()
+
 lzma_algo = Algo("LZMANCD", LZMANCD().distance, color="royalblue")
 entropy_algo = Algo("EntropyNCD", EntropyNCD().distance, color="darkorange")
 
-files_list = FilesList(dir="generated", shuffle=False, max_files=200)
+files_list = FilesList(dir=args.dir, shuffle=args.shuffle, max_files=args.max_files)
 
 calc_infos = cis_same_metric(
     algos=[
@@ -84,6 +135,7 @@ def draw_boxplots(
     calc_infos_list,
     iteration_num,
     total_files_count,
+    output_plot_path,
 ):
     print(f"\nDrawing boxplots for iteration {iteration_num}...")
 
@@ -235,19 +287,17 @@ def draw_boxplots(
                 ax.legend(handles=legend_elements, loc="upper right")
 
     plt.tight_layout()
-    save_plot_safely(fig, "test_box_plots.svg")
+    save_plot_safely(fig, output_plot_path)
     print(f"Boxplot saved for iteration {iteration_num}")
 
 
-path_to_runner_main = "verilog-model/.github/workflows/runner/main.py"
-errors_report_file_path = "errors_report.json"
 temp_dir = tempfile.TemporaryDirectory()
 
 tests_runner_folder = TestsRunnerFolder(path=temp_dir.name)
 tests_runner = TestsRunner(
-    path_to_runner_main=path_to_runner_main,
+    path_to_runner_main=args.runner_main,
     folder=tests_runner_folder,
-    errors_report_file_path=errors_report_file_path,
+    errors_report_file_path=args.errors_report,
 )
 
 filter_results = {}  # Organized by eps -> error_id -> label -> list of measurements
@@ -266,7 +316,7 @@ for eps in relative_eps_to_test:
     filter_results[eps] = {}
     remaining_files_counts[eps] = {}
 
-for i in range(500):
+for i in range(args.iterations):
     print(f"\n{'='*60}")
     print(f"=== Iteration {i + 1} ===")
     print(f"{'='*60}")
@@ -276,7 +326,7 @@ for i in range(500):
     tests_runner_folder.copy_files(baseline_file_paths)
     tests_runner.execute()
 
-    baseline_result = TestsRunnerResult(errors_report_file_path)
+    baseline_result = TestsRunnerResult(args.errors_report)
     baseline_errors = baseline_result.read_result()
 
     for error_count in baseline_errors:
@@ -326,7 +376,7 @@ for i in range(500):
             print("Running tests...")
             tests_runner.execute()
 
-            result = TestsRunnerResult(errors_report_file_path)
+            result = TestsRunnerResult(args.errors_report)
             errors_counts = result.read_result()
 
             for error_count in errors_counts:
@@ -355,6 +405,7 @@ for i in range(500):
         calc_infos,
         i + 1,
         len(files_list.file_paths),
+        args.output_plot,
     )
 
 print(f"\n{'='*60}")
