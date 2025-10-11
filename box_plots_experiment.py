@@ -324,21 +324,26 @@ for i in range(args.iterations):
     print("\nCollecting baseline (unfiltered) error counts...")
     baseline_file_paths = files_list.file_paths
     tests_runner_folder.copy_files(baseline_file_paths)
-    tests_runner.execute()
+    baseline_success = tests_runner.execute()
 
-    baseline_result = TestsRunnerResult(args.errors_report)
-    baseline_errors = baseline_result.read_result()
-
-    for error_count in baseline_errors:
-        error_id = error_count.error_id
-        if error_id not in baseline_results:
-            baseline_results[error_id] = {"overall": [], "test_paths_count": []}
-        baseline_results[error_id]["overall"].append(error_count.overall)
-        baseline_results[error_id]["test_paths_count"].append(
-            error_count.test_paths_count
+    if not baseline_success:
+        print(
+            "WARNING: Baseline test run failed or timed out. Skipping baseline for this iteration."
         )
+    else:
+        baseline_result = TestsRunnerResult(args.errors_report)
+        baseline_errors = baseline_result.read_result()
 
-    print(f"Baseline: Found {len(baseline_errors)} unique error types")
+        for error_count in baseline_errors:
+            error_id = error_count.error_id
+            if error_id not in baseline_results:
+                baseline_results[error_id] = {"overall": [], "test_paths_count": []}
+            baseline_results[error_id]["overall"].append(error_count.overall)
+            baseline_results[error_id]["test_paths_count"].append(
+                error_count.test_paths_count
+            )
+
+        print(f"Baseline: Found {len(baseline_errors)} unique error types")
 
     for eps in relative_eps_to_test:
         print(f"\nTesting with relative_eps = {eps}")
@@ -374,28 +379,33 @@ for i in range(args.iterations):
             tests_runner_folder.copy_files(remaining_file_paths)
 
             print("Running tests...")
-            tests_runner.execute()
+            runner_success = tests_runner.execute()
 
-            result = TestsRunnerResult(args.errors_report)
-            errors_counts = result.read_result()
-
-            for error_count in errors_counts:
-                error_id = error_count.error_id
-                if error_id not in filter_results[eps]:
-                    filter_results[eps][error_id] = {}
-
-                if label not in filter_results[eps][error_id]:
-                    filter_results[eps][error_id][label] = []
-
-                filter_results[eps][error_id][label].append(
-                    {
-                        "iteration": i,
-                        "overall": error_count.overall,
-                        "test_paths_count": error_count.test_paths_count,
-                    }
+            if not runner_success:
+                print(
+                    f"WARNING: Filtered test run failed or timed out for {label}. Skipping this iteration."
                 )
+            else:
+                result = TestsRunnerResult(args.errors_report)
+                errors_counts = result.read_result()
 
-            print(f"Found {len(errors_counts)} unique error types")
+                for error_count in errors_counts:
+                    error_id = error_count.error_id
+                    if error_id not in filter_results[eps]:
+                        filter_results[eps][error_id] = {}
+
+                    if label not in filter_results[eps][error_id]:
+                        filter_results[eps][error_id][label] = []
+
+                    filter_results[eps][error_id][label].append(
+                        {
+                            "iteration": i,
+                            "overall": error_count.overall,
+                            "test_paths_count": error_count.test_paths_count,
+                        }
+                    )
+
+                print(f"Found {len(errors_counts)} unique error types")
 
     draw_boxplots(
         filter_results,

@@ -51,17 +51,29 @@ python3 {path_to_runner_main} \
 
     def execute(self):
         print("Running command: ", self.command)
-        subprocess.run(
-            self.command,
-            shell=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        try:
+            subprocess.run(
+                self.command,
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=300,
+            )
+            print(f"Test runner completed successfully.")
+        except subprocess.TimeoutExpired:
+            print(f"WARNING: Test runner timed out after 300 seconds!")
+            return False
+        except Exception as e:
+            print(f"ERROR: Test runner failed with exception: {e}")
+            return False
+
         try:
             os.remove("a.out")
             print("Removed a.out from current directory.")
         except Exception as e:
             print(f"Failed to remove a.out: {e}")
+
+        return True
 
 
 @dataclass
