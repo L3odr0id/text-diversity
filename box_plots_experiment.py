@@ -137,7 +137,7 @@ def draw_boxplots(
     total_files_count,
     output_plot_path,
 ):
-    print(f"\nDrawing boxplots for iteration {iteration_num}...")
+    logging.debug(f"\nDrawing boxplots for iteration {iteration_num}...")
 
     label_to_algo = {}
     for calc_info in calc_infos_list:
@@ -288,7 +288,7 @@ def draw_boxplots(
 
     plt.tight_layout()
     save_plot_safely(fig, output_plot_path)
-    print(f"Boxplot saved for iteration {iteration_num}")
+    logging.debug(f"Boxplot saved for iteration {iteration_num}")
 
 
 temp_dir = tempfile.TemporaryDirectory()
@@ -307,9 +307,9 @@ baseline_results = (
 )  # Initial unfiltered error counts: error_id -> {"overall": list, "test_paths_count": list}
 
 initial_indices = list(range(len(files_list.file_paths)))
-relative_eps_to_test = [0.001]
+relative_eps_to_test = [0.001, 0.0001, 0.00001, 0.000001]
 max_tries = 10
-min_indices_count = 2
+min_indices_count = 10
 
 
 for eps in relative_eps_to_test:
@@ -317,17 +317,17 @@ for eps in relative_eps_to_test:
     remaining_files_counts[eps] = {}
 
 for i in range(args.iterations):
-    print(f"\n{'='*60}")
-    print(f"=== Iteration {i + 1} ===")
-    print(f"{'='*60}")
+    logging.debug(f"\n{'='*60}")
+    logging.debug(f"=== Iteration {i + 1} ===")
+    logging.debug(f"{'='*60}")
 
-    print("\nCollecting baseline (unfiltered) error counts...")
+    logging.debug("\nCollecting baseline (unfiltered) error counts...")
     baseline_file_paths = files_list.file_paths
     tests_runner_folder.copy_files(baseline_file_paths)
     baseline_success = tests_runner.execute()
 
     if not baseline_success:
-        print(
+        logging.debug(
             "WARNING: Baseline test run failed or timed out. Skipping baseline for this iteration."
         )
     else:
@@ -343,16 +343,16 @@ for i in range(args.iterations):
                 error_count.test_paths_count
             )
 
-        print(f"Baseline: Found {len(baseline_errors)} unique error types")
+        logging.debug(f"Baseline: Found {len(baseline_errors)} unique error types")
 
     for eps in relative_eps_to_test:
-        print(f"\nTesting with relative_eps = {eps}")
+        logging.debug(f"\nTesting with relative_eps = {eps}")
 
         for calc_info in calc_infos:
-            print(f"\nProcessing {calc_info.label()}")
+            logging.debug(f"\nProcessing {calc_info.label()}")
 
             initial_metric_value = calc_info.metric.calc(calc_info.distances)
-            print(f"Initial metric value: {initial_metric_value}")
+            logging.debug(f"Initial metric value: {initial_metric_value}")
 
             pct_filter = PctFilter(
                 initial_indices=initial_indices,
@@ -369,7 +369,7 @@ for i in range(args.iterations):
             remaining_file_paths = [
                 files_list.file_paths[idx] for idx in pct_filter.current_idxs
             ]
-            print(f"Files remaining after filter: {len(remaining_file_paths)}")
+            logging.debug(f"Files remaining after filter: {len(remaining_file_paths)}")
 
             label = calc_info.label()
             if label not in remaining_files_counts[eps]:
@@ -378,11 +378,11 @@ for i in range(args.iterations):
 
             tests_runner_folder.copy_files(remaining_file_paths)
 
-            print("Running tests...")
+            logging.debug("Running tests...")
             runner_success = tests_runner.execute()
 
             if not runner_success:
-                print(
+                logging.debug(
                     f"WARNING: Filtered test run failed or timed out for {label}. Skipping this iteration."
                 )
             else:
@@ -405,7 +405,7 @@ for i in range(args.iterations):
                         }
                     )
 
-                print(f"Found {len(errors_counts)} unique error types")
+                logging.debug(f"Found {len(errors_counts)} unique error types")
 
     draw_boxplots(
         filter_results,
@@ -418,15 +418,15 @@ for i in range(args.iterations):
         args.output_plot,
     )
 
-print(f"\n{'='*60}")
-print(f"=== Final Summary ===")
-print(f"{'='*60}")
+logging.debug(f"\n{'='*60}")
+logging.debug(f"=== Final Summary ===")
+logging.debug(f"{'='*60}")
 
 for eps in relative_eps_to_test:
-    print(f"\n--- Results for relative_eps = {eps} ---")
-    print(f"Collected results for {len(filter_results[eps])} error types")
+    logging.debug(f"\n--- Results for relative_eps = {eps} ---")
+    logging.debug(f"Collected results for {len(filter_results[eps])} error types")
 
-    print(f"\nMedian Remaining Files:")
+    logging.debug(f"\nMedian Remaining Files:")
     for label, counts in remaining_files_counts[eps].items():
         median_count = statistics.median(counts)
-        print(f"  {label}: {median_count} (from {counts})")
+        logging.debug(f"  {label}: {median_count} (from {counts})")

@@ -48,7 +48,7 @@ class PctFilter:
 
         metric_change = current_value - new_value
         eps_change = self.relative_eps * current_value
-        info = f"Try {attempt + 1}. Remove {removal_pct * 100}% ({num_to_remove}). Old {current_value}. New {new_value}. Diff: {metric_change}. relative_eps: {self.relative_eps}. Metric change: {metric_change}. relative_eps*prev_value: {eps_change}.  Is metric changed less than eps: {metric_change <= eps_change}"
+        info = f"Try {attempt + 1}. Metric {self.calc_info.metric.name} x algo {self.calc_info.distances.algo.name}. Remove {removal_pct * 100}% ({num_to_remove}). Old {current_value}. New {new_value}. Diff: {metric_change}. relative_eps: {self.relative_eps}. Metric change: {metric_change}. relative_eps*prev_value: {eps_change}.  Is metric changed less than eps: {metric_change <= eps_change}"
 
         if metric_change <= eps_change:
             logging.info(f"Attempt succeeded. {info}")
