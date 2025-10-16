@@ -43,8 +43,8 @@ from src.pct_filter.pct_filter import PctFilter
 import logging
 
 logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(funcName)s - %(message)s",
-    level=logging.INFO,
+    format="%(asctime)s - %(relativeCreated)d ms - %(levelname)s - %(funcName)s - %(message)s",
+    level=logging.DEBUG,
 )
 
 

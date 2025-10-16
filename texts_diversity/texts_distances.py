@@ -1,4 +1,6 @@
 from typing import List, Dict, Tuple, Optional, Callable
+import logging
+import time
 
 from texts_diversity.algo import Algo
 
@@ -19,6 +21,7 @@ class TextsDistances:
         """
         current_idx = len(old_texts)
 
+        start_time = time.time()
         for prev_idx, prev_text in enumerate(old_texts):
             try:
                 distance_value = self.algo.func(new_text, prev_text)
@@ -29,6 +32,10 @@ class TextsDistances:
                 distance_value = float("nan")
 
             self.data[(prev_idx, current_idx)] = distance_value
+        elapsed_time = time.time() - start_time
+        logging.debug(
+            f"Computed distances to {current_idx} previous texts in {elapsed_time:.4f}s"
+        )
 
     def max_key(self) -> int:
         return max(max(i, j) for i, j in self.data.keys())
