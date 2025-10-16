@@ -245,7 +245,7 @@ def draw_boxplots(
             ax.set_xticks(x_tick_positions)
             ax.set_xticklabels(labels_for_x, rotation=45, ha="right")
 
-            ax.set_ylabel("Errors per File")
+            ax.set_ylabel("%")
             ax.set_xlabel("Error ID")
 
             title = f"{metric_title} (relative_eps = {eps}, iteration {iteration_num})"
@@ -307,7 +307,7 @@ baseline_results = (
 )  # Initial unfiltered error counts: error_id -> {"overall": list, "test_paths_count": list}
 
 initial_indices = list(range(len(files_list.file_paths)))
-relative_eps_to_test = [0.001, 0.0001, 0.00001, 0.000001]
+relative_eps_to_test = [0.00001]
 max_tries = 10
 min_indices_count = 10
 
