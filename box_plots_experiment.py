@@ -248,7 +248,7 @@ def draw_boxplots(
             ax.set_ylabel("%")
             ax.set_xlabel("Error ID")
 
-            title = f"{metric_title} (relative_eps = {eps}, iteration {iteration_num})"
+            title = f"{metric_title} / filtered files count (relative_eps = {eps}, iteration {iteration_num})"
             if eps in remaining_files_counts_dict and remaining_files_counts_dict[eps]:
                 median_info = []
                 for label in sorted(remaining_files_counts_dict[eps].keys()):
