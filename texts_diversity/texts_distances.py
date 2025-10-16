@@ -34,7 +34,7 @@ class TextsDistances:
             self.data[(prev_idx, current_idx)] = distance_value
         elapsed_time = time.time() - start_time
         logging.debug(
-            f"Computed distances to {current_idx} previous texts in {elapsed_time:.4f}s"
+            f"Algo {self.algo.name}. Computed distances to {current_idx} previous texts in {elapsed_time:.4f}s"
         )
 
     def max_key(self) -> int:
