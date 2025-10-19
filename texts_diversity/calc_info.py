@@ -14,6 +14,9 @@ class CalcInfo:
     def label(self) -> str:
         return f"{self.metric.name} ({self.distances.algo.name})"
 
+    def current_value(self) -> float:
+        return self.metric.calc(self.distances)
+
     def value(self, distances: TextsDistances) -> float:  # TODO: remove. Deprecated.
         return self.metric.calc(distances)
 

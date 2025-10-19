@@ -142,7 +142,7 @@ class PctFilter:
         successfuly_shrinked = len(new_remaining_indices) < len(self.current_idxs)
 
         logging.info(
-            f"Iter {self.iteration}. Successfully shrinked: {successfuly_shrinked}. New value: {new_value}. New count: {len(new_remaining_indices)}."
+            f"Iter {self.iteration}. Successfully shrinked: {successfuly_shrinked}. Old value: {self.current_metric_value} New value: {new_value}. Old count: {len(self.current_idxs)} New count: {len(new_remaining_indices)}."
         )
 
         if successfuly_shrinked:

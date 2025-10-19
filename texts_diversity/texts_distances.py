@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Optional, Callable
+from typing import List, Dict, Tuple, Optional, Callable, Union
 import logging
 import time
 
@@ -97,3 +97,19 @@ class TextsDistances:
 
         for key in keys_to_remove:
             self.data.pop(key, None)
+
+
+def build_text_distances(
+    file_paths: List[str], algo: Algo
+) -> Union[TextsDistances, List[str]]:
+    text_distances = TextsDistances(algo=algo, normalize=None)
+    texts = []
+    for file_path in file_paths:
+        with open(file_path, "r", encoding="utf-8") as f:
+            new_text = f.read()
+
+        text_distances.add_dist(texts, new_text)
+
+        texts.append(new_text)
+
+    return text_distances, texts

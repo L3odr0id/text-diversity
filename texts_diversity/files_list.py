@@ -4,8 +4,8 @@ from typing import List, Callable
 
 
 class FilesList:
-    def __init__(self, dir: str, shuffle: bool, max_files: int):
-        self.file_paths = self._get_file_paths(dir, shuffle, max_files)
+    def __init__(self, files_dir: str, shuffle: bool, max_files: int):
+        self.file_paths = self._get_file_paths(files_dir, shuffle, max_files)
 
     def _get_file_paths(
         self, directory: str, shuffle: bool, max_files: int
