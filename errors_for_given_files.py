@@ -24,7 +24,7 @@ def errors_for_given_paths(file_paths, path_to_runner_main, errors_report_file_p
         result = TestsRunnerResult(errors_report_file_path)
         errors_counts = result.read_result()
 
-        sorted(errors_counts, key=lambda item: item.error_id)
+        errors_counts = sorted(errors_counts, key=lambda item: item.error_id)
 
         print("{:<80} {:<10} {:<12}".format("Error ID", "Overall", "Test Files"))
         print("-" * (80 + 10 + 12 + 2))
