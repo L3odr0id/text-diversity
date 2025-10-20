@@ -52,13 +52,19 @@ python3 {path_to_runner_main} \
     def execute(self):
         print("Running command: ", self.command)
         try:
-            subprocess.run(
+            result = subprocess.run(
                 self.command,
                 shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                # stdout=subprocess.DEVNULL,
+                # stderr=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
                 timeout=500,
             )
+            print(f"out")
+            print(result.stdout)
+            print("err")
+            print(result.stderr)
             print(f"Test runner completed successfully.")
         except subprocess.TimeoutExpired:
             print(f"WARNING: Test runner timed out after 300 seconds!")
