@@ -66,6 +66,7 @@ class SetsSplit2:
 
         logging.info(f"Made substes with lens: {[len(s) for s in smaller_sets]}")
 
+        self.max_metric_value = -1
         calc_infos = []
         for file_paths in smaller_sets:
             text_distances, _ = build_text_distances(file_paths, self.algo)
@@ -75,9 +76,9 @@ class SetsSplit2:
             initial_metric_value = calc_info.current_value()
             if initial_metric_value > self.max_metric_value:
                 self.max_metric_value = initial_metric_value
-                logging.info(
-                    f"Found value: {initial_metric_value}. Max: {self.max_metric_value}"
-                )
+            logging.info(
+                f"Found value: {initial_metric_value}. Max: {self.max_metric_value}"
+            )
 
         for i in range(len(smaller_sets)):
             files_set = smaller_sets[i]
