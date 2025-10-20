@@ -2,7 +2,7 @@ import argparse
 
 from textdistance import LZMANCD
 
-from src.sets_split.sets_split import SetsSplit
+from src.sets_split.sets_split2 import SetsSplit2
 from src.sets_split.split_filter_results import SplitFilterResults
 from texts_diversity.files_list import FilesList
 from texts_diversity.algo import Algo
@@ -36,7 +36,7 @@ def main() -> None:
 
     lzma_algo = Algo("LZMANCD", LZMANCD().distance, color="royalblue")
 
-    sets_split = SetsSplit(
+    sets_split = SetsSplit2(
         all_file_names=files_list.file_paths,
         split_by=args.split_by,
         algo=lzma_algo,
