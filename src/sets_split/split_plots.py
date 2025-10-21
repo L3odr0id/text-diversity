@@ -25,7 +25,7 @@ class SplitPlots:
             self.draw()
 
     def draw(self):
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(25, 12))
+        fig, ax1 = plt.subplots(1, 1, figsize=(25, 12))
 
         all_names = self.sets_split.current_file_names
         file_indices = list(range(len(all_names)))
@@ -49,27 +49,27 @@ class SplitPlots:
             f"Times to remove count. Iter {self.iter}. Files: {len(all_names)}. Split by: {self.sets_split.split_by}"
         )
 
-        max_count = max(self.removes_counter.values())
-        count_distribution = {}
-        for count_value in range(max_count + 1):
-            count_distribution[count_value] = counts.count(count_value)
+        # max_count = max(self.removes_counter.values())
+        # count_distribution = {}
+        # for count_value in range(max_count + 1):
+        #     count_distribution[count_value] = counts.count(count_value)
 
-        labels = [f"{count} times" for count in count_distribution.keys()]
-        sizes = list(count_distribution.values())
-        wedges, texts, autotexts = ax2.pie(
-            sizes, labels=None, autopct="%1.1f%%", startangle=90
-        )
-        ax2.legend(
-            wedges,
-            labels,
-            title="Remove Count",
-            loc="upper right",
-            bbox_to_anchor=(1, 0, 0.5, 1),
-        )
+        # labels = [f"{count} times" for count in count_distribution.keys()]
+        # sizes = list(count_distribution.values())
+        # wedges, texts, autotexts = ax2.pie(
+        #     sizes, labels=None, autopct="%1.1f%%", startangle=90
+        # )
+        # ax2.legend(
+        #     wedges,
+        #     labels,
+        #     title="Remove Count",
+        #     loc="upper right",
+        #     bbox_to_anchor=(1, 0, 0.5, 1),
+        # )
 
-        ax2.set_title(
-            f"Distribution of remove counts. Iter {self.iter}. Files: {len(all_names)}. Split by: {self.sets_split.split_by}"
-        )
+        # ax2.set_title(
+        #     f"Distribution of remove counts. Iter {self.iter}. Files: {len(all_names)}. Split by: {self.sets_split.split_by}"
+        # )
 
-        plt.tight_layout(pad=3.0)
+        # plt.tight_layout(pad=3.0)
         save_plot_safely(fig, self.output_file)
