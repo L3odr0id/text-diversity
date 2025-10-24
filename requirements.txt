@@ -2,3 +2,4 @@ textdistance
 matplotlib
 numpy
 scipy
+kneed

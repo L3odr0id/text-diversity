@@ -1,28 +1,41 @@
 from collections import Counter
+import logging
 
 import matplotlib.pyplot as plt
 
 from src.sets_split.sets_split_mark import SetsSplitMark
 from texts_diversity.utils import save_plot_safely
+from src.basic.counter_report import CounterReport
 
 
 class SplitPlots:
-    def __init__(self, sets_split: SetsSplitMark, output_file: str, max_iter: int):
+    def __init__(
+        self,
+        sets_split: SetsSplitMark,
+        output_file: str,
+        counter_report_file: str,
+        max_iter: int,
+    ):
         self.sets_split = sets_split
         self.max_iter = max_iter
         self.iter = 0
-        self.removes_counter = Counter()
         self.output_file = output_file
+
+        self.removes_counter = Counter()
+        for file_name in sets_split.current_file_names:
+            self.removes_counter[file_name] = 0
+        self.counter_report = CounterReport(counter_report_file)
+        self.counter_report.set_counter(self.removes_counter)
 
     def draw_all(self):
         while self.iter < self.max_iter:
             files_to_remove = self.sets_split.filter_files()
             self.removes_counter.update(files_to_remove)
-            print(
-                f"Removed {len(files_to_remove)} files. Files: {len(self.sets_split.current_file_names)}. Split by: {self.sets_split.split_by}. Counter {self.removes_counter}"
-            )
+
             self.iter += 1
+            logging.info(f"Finished iteration {self.iter}")
             self.draw()
+            self.counter_report.save()
 
     def draw(self):
         fig, ax1 = plt.subplots(1, 1, figsize=(25, 12))
@@ -49,27 +62,5 @@ class SplitPlots:
             f"Times to remove count. Iter {self.iter}. Files: {len(all_names)}. Split by: {self.sets_split.split_by}"
         )
 
-        # max_count = max(self.removes_counter.values())
-        # count_distribution = {}
-        # for count_value in range(max_count + 1):
-        #     count_distribution[count_value] = counts.count(count_value)
-
-        # labels = [f"{count} times" for count in count_distribution.keys()]
-        # sizes = list(count_distribution.values())
-        # wedges, texts, autotexts = ax2.pie(
-        #     sizes, labels=None, autopct="%1.1f%%", startangle=90
-        # )
-        # ax2.legend(
-        #     wedges,
-        #     labels,
-        #     title="Remove Count",
-        #     loc="upper right",
-        #     bbox_to_anchor=(1, 0, 0.5, 1),
-        # )
-
-        # ax2.set_title(
-        #     f"Distribution of remove counts. Iter {self.iter}. Files: {len(all_names)}. Split by: {self.sets_split.split_by}"
-        # )
-
-        # plt.tight_layout(pad=3.0)
+        plt.tight_layout(pad=3.0)
         save_plot_safely(fig, self.output_file)
