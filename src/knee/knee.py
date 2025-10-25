@@ -13,7 +13,13 @@ class Knee:
 
     def find_knee(self):
         kneedle = KneeLocator(
-            self.x_values, self.y_values, S=1.0, curve="concave", direction="decreasing"
+            self.x_values,
+            self.y_values,
+            S=1,
+            curve="concave",
+            direction="decreasing",
+            interp_method="polynomial",
+            polynomial_degree=3,
         )
         print(f"Knee point: {kneedle.knee}")
         return round(kneedle.knee, 3)
