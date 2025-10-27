@@ -16,7 +16,7 @@ from texts_diversity.utils import save_plot_safely
 
 logging.basicConfig(
     format="%(asctime)s - %(relativeCreated)d ms - %(levelname)s - %(funcName)s - %(message)s",
-    level=logging.DEBUG,
+    level=logging.INFO,
 )
 
 
