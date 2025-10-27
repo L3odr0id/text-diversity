@@ -45,8 +45,8 @@ class TestsRunner:
 python3 {path_to_runner_main} \
     --gen-path """
             + f'"{folder.path}"'
-            + r""" --job-link "https://github.com/DepTyCheck/verilog-model/" --tool-cmd "iverilog -g2012 -o a.out {file}" --tool-name "iverilog" --tool-error-regex "(syntax error\W[A-z-\/0-9,.:]+ .*$|(error|sorry|assert|vvp): [\S ]+$)" --ignored-errors-dir "verilog-gh-pages/found_errors/iverilog" --error-distances-output "error_distances.html" --extra-ignored-regexes "Unable to elaborate r-value: ['{}d0-9]+" --known-errors-report-output """
-            + f'"{errors_report_file_path}"'
+            + r""" --job-link "https://github.com/DepTyCheck/verilog-model/" --tool-cmd "iverilog -g2012 -o a.out {file}" --tool-name "iverilog" --tool-error-regex "(syntax error\W[A-z-\/0-9,.:]+ .*$|(error|sorry|assert|vvp): [\S ]+$)" --ignored-errors-dir "verilog-gh-pages/found_errors/iverilog" --error-distances-output "error_distances.html" --extra-ignored-regexes "Unable to elaborate r-value: ['{}d0-9]+" --run-statistics-output """
+            + f'"{errors_report_file_path}" --commit "does_not_matter"'
         )
 
     def execute(self):

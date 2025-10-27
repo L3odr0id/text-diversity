@@ -29,7 +29,7 @@ class KneeCut:
         x_values = list(range(len(y_values)))
 
         knee = Knee(x_values=x_values, y_values=y_values)
-        knee.draw(output_file=self.knee_plot_path)
+        knee.draw_self(output_file=self.knee_plot_path)
         logging.info(f"Drawn knee plot to {self.knee_plot_path}")
 
         knee_point = knee.find_knee()

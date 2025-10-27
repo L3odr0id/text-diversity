@@ -11,7 +11,7 @@ class Knee:
         self.x_values = x_values
         self.y_values = y_values
 
-    def find_knee(self):
+    def find_knee(self) -> float:
         kneedle = KneeLocator(
             self.x_values,
             self.y_values,
@@ -24,9 +24,13 @@ class Knee:
         print(f"Knee point: {kneedle.knee}")
         return round(kneedle.knee, 3)
 
-    def draw(self, output_file: str):
+    def draw_self(self, output_file: str) -> None:
         fig, ax = plt.subplots(figsize=(10, 6))
+        self.draw(ax=ax)
+        save_plot_safely(fig, output_file)
 
+    def draw(self, ax: plt.Axes):
+        ax.clear()
         ax.plot(self.x_values, self.y_values, "b-", linewidth=2, label="Data")
 
         knee_point = self.find_knee()
@@ -39,10 +43,8 @@ class Knee:
             label=f"Knee point: {knee_point}",
         )
 
-        ax.set_xlabel("X Values")
-        ax.set_ylabel("Y Values")
+        ax.set_xlabel("Files")
+        ax.set_ylabel("Times to remove")
         ax.set_title("Knee Detection Plot")
         ax.legend()
         ax.grid(True, alpha=0.3)
-
-        save_plot_safely(fig, output_file)
