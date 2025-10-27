@@ -191,7 +191,7 @@ def create_visualization(
     x = np.arange(len(error_labels))
     width = 0.35
 
-    ax2.bar(
+    bars1 = ax2.bar(
         x - width / 2,
         initial_rates,
         width,
@@ -199,7 +199,7 @@ def create_visualization(
         alpha=0.7,
         color="lightblue",
     )
-    ax2.bar(
+    bars2 = ax2.bar(
         x + width / 2,
         filtered_rates,
         width,
@@ -207,6 +207,31 @@ def create_visualization(
         alpha=0.7,
         color="orange",
     )
+
+    for i, (bar1, bar2) in enumerate(zip(bars1, bars2)):
+        error_id = sorted(all_error_ids)[i]
+        initial_count = initial_error_dict.get(error_id, 0)
+        filtered_count = filtered_error_dict.get(error_id, 0)
+
+        if bar1.get_height() > 0:
+            ax2.text(
+                bar1.get_x() + bar1.get_width() / 2,
+                bar1.get_height() + 0.001,
+                str(initial_count),
+                ha="center",
+                va="bottom",
+                fontsize=8,
+            )
+
+        if bar2.get_height() > 0:
+            ax2.text(
+                bar2.get_x() + bar2.get_width() / 2,
+                bar2.get_height() + 0.001,
+                str(filtered_count),
+                ha="center",
+                va="bottom",
+                fontsize=8,
+            )
 
     ax2.set_xlabel("Error Types")
     ax2.set_ylabel("Error Rate (errors per file)")

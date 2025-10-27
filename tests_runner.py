@@ -61,11 +61,11 @@ python3 {path_to_runner_main} \
                 text=True,
                 timeout=500,
             )
-            print(f"out")
-            print(result.stdout)
+            # print(f"out")
+            # print(result.stdout)
             print("err")
             print(result.stderr)
-            print(f"Test runner completed successfully.")
+            print(f"Test runner completed.")
         except subprocess.TimeoutExpired:
             print(f"WARNING: Test runner timed out after 300 seconds!")
             return False
