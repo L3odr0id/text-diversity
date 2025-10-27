@@ -49,9 +49,7 @@ logging.basicConfig(
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Run box plots experiment with text corpus diversity filtering"
-    )
+    parser = argparse.ArgumentParser(description="Run box plots experiment with text corpus diversity filtering")
     parser.add_argument(
         "--dir",
         type=str,
@@ -78,8 +76,8 @@ def parse_args():
     parser.add_argument(
         "--runner-main",
         type=str,
-        default="verilog-model/.github/workflows/runner/main.py",
-        help="Path to runner main.py (default: verilog-model/.github/workflows/runner/main.py)",
+        default="verilog-model/.github/workflows/runner/tools-run/main.py",
+        help="Path to runner main.py (default: verilog-model/.github/workflows/runner/tools-run/main.py)",
     )
     parser.add_argument(
         "--errors-report",
@@ -163,18 +161,14 @@ def draw_boxplots(
     metric_titles = ["Overall errors", "Tests with errors"]
 
     for idx, eps in enumerate(eps_values):
-        for metric_idx, (metric_key, metric_title) in enumerate(
-            zip(metrics_to_plot, metric_titles)
-        ):
+        for metric_idx, (metric_key, metric_title) in enumerate(zip(metrics_to_plot, metric_titles)):
             ax = axes[idx][metric_idx]
 
             error_ids = sorted(filter_results_dict[eps].keys())
 
             if not error_ids:
                 ax.text(0.5, 0.5, "No errors found", ha="center", va="center")
-                ax.set_title(
-                    f"{metric_title} - relative_eps = {eps} (iteration {iteration_num})"
-                )
+                ax.set_title(f"{metric_title} - relative_eps = {eps} (iteration {iteration_num})")
                 continue
 
             all_data = []
@@ -186,37 +180,25 @@ def draw_boxplots(
 
             for i, error_id in enumerate(error_ids):
                 num_boxes_for_this_error = 0
-                base_pos = (
-                    i * 4
-                )  # Space out error groups (4 to accommodate 3 boxes + gap)
+                base_pos = i * 4  # Space out error groups (4 to accommodate 3 boxes + gap)
 
                 if error_id in baseline_results_dict:
-                    baseline_counts = baseline_results_dict[error_id][metric_key][
-                        :iteration_num
-                    ]
+                    baseline_counts = baseline_results_dict[error_id][metric_key][:iteration_num]
                     if baseline_counts:
-                        normalized_baseline = [
-                            count / total_files_count for count in baseline_counts
-                        ]
+                        normalized_baseline = [count / total_files_count for count in baseline_counts]
                         all_data.append(normalized_baseline)
                         box_colors.append(baseline_color)
                         positions.append(base_pos + num_boxes_for_this_error)
                         num_boxes_for_this_error += 1
                         has_baseline = True
 
-                labels_for_this_error = sorted(
-                    filter_results_dict[eps][error_id].keys()
-                )
+                labels_for_this_error = sorted(filter_results_dict[eps][error_id].keys())
 
                 for label in labels_for_this_error:
                     normalized_counts = []
-                    for iter_idx, item in enumerate(
-                        filter_results_dict[eps][error_id][label]
-                    ):
+                    for iter_idx, item in enumerate(filter_results_dict[eps][error_id][label]):
                         file_count = remaining_files_counts_dict[eps][label][iter_idx]
-                        normalized_count = (
-                            item[metric_key] / file_count if file_count > 0 else 0
-                        )
+                        normalized_count = item[metric_key] / file_count if file_count > 0 else 0
                         normalized_counts.append(normalized_count)
 
                     all_data.append(normalized_counts)
@@ -255,11 +237,7 @@ def draw_boxplots(
                     counts = remaining_files_counts_dict[eps][label][:iteration_num]
                     if counts:
                         median_count = statistics.median(counts)
-                        algo_name = (
-                            label_to_algo[label]["name"]
-                            if label in label_to_algo
-                            else label
-                        )
+                        algo_name = label_to_algo[label]["name"] if label in label_to_algo else label
                         median_info.append(f"{algo_name}: {median_count:.0f} files")
                 if median_info:
                     title += f"\nMedian remaining: {', '.join(median_info)}"
@@ -270,9 +248,7 @@ def draw_boxplots(
             legend_elements = []
 
             if has_baseline:
-                legend_elements.append(
-                    Patch(facecolor=baseline_color, alpha=0.7, label=baseline_label)
-                )
+                legend_elements.append(Patch(facecolor=baseline_color, alpha=0.7, label=baseline_label))
 
             for label in sorted(unique_labels):
                 if label in label_to_algo:
@@ -302,9 +278,7 @@ tests_runner = TestsRunner(
 
 filter_results = {}  # Organized by eps -> error_id -> label -> list of measurements
 remaining_files_counts = {}  # Organized by eps -> label -> list of counts
-baseline_results = (
-    {}
-)  # Initial unfiltered error counts: error_id -> {"overall": list, "test_paths_count": list}
+baseline_results = {}  # Initial unfiltered error counts: error_id -> {"overall": list, "test_paths_count": list}
 
 initial_indices = list(range(len(files_list.file_paths)))
 relative_eps_to_test = [0.00001]
@@ -327,9 +301,7 @@ for i in range(args.iterations):
     baseline_success = tests_runner.execute()
 
     if not baseline_success:
-        logging.info(
-            "WARNING: Baseline test run failed or timed out. Skipping baseline for this iteration."
-        )
+        logging.info("WARNING: Baseline test run failed or timed out. Skipping baseline for this iteration.")
     else:
         baseline_result = TestsRunnerResult(args.errors_report)
         baseline_errors = baseline_result.read_result()
@@ -339,9 +311,7 @@ for i in range(args.iterations):
             if error_id not in baseline_results:
                 baseline_results[error_id] = {"overall": [], "test_paths_count": []}
             baseline_results[error_id]["overall"].append(error_count.overall)
-            baseline_results[error_id]["test_paths_count"].append(
-                error_count.test_paths_count
-            )
+            baseline_results[error_id]["test_paths_count"].append(error_count.test_paths_count)
 
         logging.info(f"Baseline: Found {len(baseline_errors)} unique error types")
 
@@ -366,9 +336,7 @@ for i in range(args.iterations):
             while not pct_filter.is_finished:
                 pct_filter.iterate()
 
-            remaining_file_paths = [
-                files_list.file_paths[idx] for idx in pct_filter.current_idxs
-            ]
+            remaining_file_paths = [files_list.file_paths[idx] for idx in pct_filter.current_idxs]
             logging.info(f"Files remaining after filter: {len(remaining_file_paths)}")
 
             label = calc_info.label()
@@ -382,9 +350,7 @@ for i in range(args.iterations):
             runner_success = tests_runner.execute()
 
             if not runner_success:
-                logging.info(
-                    f"WARNING: Filtered test run failed or timed out for {label}. Skipping this iteration."
-                )
+                logging.info(f"WARNING: Filtered test run failed or timed out for {label}. Skipping this iteration.")
             else:
                 result = TestsRunnerResult(args.errors_report)
                 errors_counts = result.read_result()
