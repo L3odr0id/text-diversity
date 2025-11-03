@@ -39,14 +39,20 @@ class TestsRunner:
         path_to_runner_main: str,
         folder: TestsRunnerFolder,
         errors_report_file_path: str,
+        gh_pages_dir: str,
+        verilog_out_name: str = "a.out",
     ):
+        self.verilog_out_name = verilog_out_name
         self.command = (
             f"""
 python3 {path_to_runner_main} \
     --gen-path """
             + f'"{folder.path}"'
-            + r""" --job-link "https://github.com/DepTyCheck/verilog-model/" --tool-cmd "iverilog -g2012 -o a.out {file}" --tool-name "iverilog" --tool-error-regex "(syntax error\W[A-z-\/0-9,.:]+ .*$|(error|sorry|assert|vvp): [\S ]+$)" --ignored-errors-dir "verilog-gh-pages/found_errors/iverilog" --error-distances-output "error_distances.html" --extra-ignored-regexes "Unable to elaborate r-value: ['{}d0-9]+" --run-statistics-output """
+            + r""" --job-link "https://github.com/DepTyCheck/verilog-model/" --tool-name "iverilog" --tool-error-regex "(syntax error\W[A-z-\/0-9,.:]+ .*$|(error|sorry|assert|vvp): [\S ]+$)" --error-distances-output "error_distances.html" --extra-ignored-regexes "Unable to elaborate r-value: ['{}d0-9]+" --run-statistics-output """
             + f'"{errors_report_file_path}" --commit "does_not_matter"'
+            + f" --ignored-errors-dir {gh_pages_dir}"
+            + f' --tool-cmd "iverilog -g2012 -o {self.verilog_out_name}'
+            + ' {file}"'
         )
 
     def execute(self):
@@ -74,10 +80,10 @@ python3 {path_to_runner_main} \
             return False
 
         try:
-            os.remove("a.out")
-            print("Removed a.out from current directory.")
+            os.remove(self.verilog_out_name)
+            print(f"Removed {self.verilog_out_name} from current directory.")
         except Exception as e:
-            print(f"Failed to remove a.out: {e}")
+            print(f"Failed to remove {self.verilog_out_name}: {e}")
 
         return True
 

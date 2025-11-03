@@ -2,42 +2,47 @@ import os
 from typing import List
 import random
 import logging
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import as_completed
 
-from texts_diversity.algo import Algo
-from texts_diversity.texts_distances import TextsDistances, build_text_distances
-from texts_diversity.calc_info import CalcInfo
-from texts_diversity.metric import Metric
-from src.pct_filter.pct_filter import PctFilter
+from .text_distance_algo import TextDistanceAlgo
+from .texts_list import TextsList
+from .text_set_distances_list import (
+    TextSetDistancesList,
+)
+from .text_set_diversity_metric import (
+    TextSetDiversityMetric,
+)
+from .pct_filter import PctFilter
+from .process_pool_utils import safe_process_pool_executor
 
 
 def process_one_set(
     file_paths: List[str],
-    algo: Algo,
-    metric: Metric,
+    algo: TextDistanceAlgo,
+    metric: TextSetDiversityMetric,
     relative_eps: float,
     max_tries: int,
     min_indices_count: int,
 ) -> List[str]:
-    text_distances, _ = build_text_distances(file_paths, algo)
-    calc_info = CalcInfo(metric=metric, algo=algo)
-    calc_info.distances = text_distances
+    text_distances = TextSetDistancesList(algo=algo, texts=TextsList())
+    text_distances.init_texts(file_paths)
+    initial_metric_value = metric.value(text_distances)
     initial_indices = list(range(len(file_paths)))
-    initial_metric_value = calc_info.current_value()
+
     pct_filter = PctFilter(
         initial_indices=initial_indices,
+        text_set_distances=text_distances,
+        metric=metric,
         relative_eps=relative_eps,
         max_tries=max_tries,
         min_indices_count=min_indices_count,
-        intial_metric_value=initial_metric_value,
-        calc_info=calc_info,
     )
 
     while not pct_filter.is_finished:
         pct_filter.iterate()
 
     logging.info(
-        f"Initial metric: {initial_metric_value}, filtered metric: {pct_filter.current_metric_value}. Initial files num: {len(initial_indices)}, filtered files num: {len(pct_filter.current_idxs)}"
+        f"Initial metric: {initial_metric_value}, filtered metric: {pct_filter.current_metric_value}. Initial files num: {len(file_paths)}, filtered files num: {len(pct_filter.current_idxs)}"
     )
 
     missing_indices = [
@@ -47,13 +52,13 @@ def process_one_set(
     return files_to_remove
 
 
-class SetsSplitMark:
+class SplitSetsMark:
     def __init__(
         self,
         all_file_names: List[str],
         split_by: int,
-        algo: Algo,
-        metric: Metric,
+        algo: TextDistanceAlgo,
+        metric: TextSetDiversityMetric,
         relative_eps: float = 0.00001,
         max_tries: int = 10,
         min_indices_count: int = 10,
@@ -76,11 +81,13 @@ class SetsSplitMark:
             subset = self.current_file_names[i : i + self.split_by]
             smaller_sets.append(subset)
 
-        logging.info(f"Made substes with lens: {[len(s) for s in smaller_sets]}")
+        logging.info(
+            f"Made {len(smaller_sets)} substes with lens: {[len(s) for s in smaller_sets]}"
+        )
 
         all_files_to_remove = []
 
-        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+        with safe_process_pool_executor(max_workers=self.max_workers) as executor:
             futures = [
                 executor.submit(
                     process_one_set,

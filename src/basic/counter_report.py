@@ -5,6 +5,7 @@ from collections import Counter
 class CounterReport:
     def __init__(self, output_file: str):
         self.output_file = output_file
+        self.counter = None
 
     def set_counter(self, counter: Counter):
         self.counter = counter
