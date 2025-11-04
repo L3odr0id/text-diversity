@@ -26,7 +26,7 @@ def add_filter_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--max-workers",
         type=int,
-        default=os.cpu_count(),
+        default=1,
     )
     parser.add_argument(
         "--filter-rounds",

@@ -10,6 +10,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
 
 
 from keep_diverse import (
@@ -171,6 +172,8 @@ def knee_plot(ax1, knee_points, marks_values):
     )
 
     mean_knee = np.mean(knee_points)
+    min_knee = np.min(knee_points)
+    max_knee = np.max(knee_points)
 
     ax1.axvline(
         x=mean_knee,
@@ -178,13 +181,12 @@ def knee_plot(ax1, knee_points, marks_values):
         linestyle="--",
         linewidth=2,
         alpha=0.9,
-        label=f"Knee point: {mean_knee:.1f}",
+        label=f"Mean knee: {mean_knee:.1f}",
     )
 
-    knee_span = 0.5  # Half-width of the span
     ax1.axvspan(
-        mean_knee - knee_span,
-        mean_knee + knee_span,
+        min_knee,
+        max_knee,
         color="crimson",
         alpha=0.15,
     )
@@ -198,89 +200,96 @@ def knee_plot(ax1, knee_points, marks_values):
 
 def box_plot(
     ax2,
-    initial_errors_counts,
-    filtered_errors_counts,
-    initial_file_count,
-    filtered_file_counts,
+    initial_errors_counts: List[ErrorsCount],
+    filtered_errors_counts: List[ErrorsCount],
+    initial_file_count: int,
+    filtered_file_counts: List[int],
 ):
-    initial_error_dict = {
-        e.error_id: e.test_paths_count for e in (initial_errors_counts or [])
-    }
-
-    filtered_error_values = {}
-    for round_idx, errors_counts in enumerate(filtered_errors_counts or []):
-        file_count = (
-            filtered_file_counts[round_idx]
-            if round_idx < len(filtered_file_counts)
-            else 0
-        )
-        if file_count <= 0:
-            continue
-        for e in errors_counts:
-            normalized_value = e.test_paths_count / file_count if file_count > 0 else 0
-            filtered_error_values.setdefault(e.error_id, []).append(normalized_value)
-
-    all_error_ids = sorted(
-        set(initial_error_dict.keys()) | set(filtered_error_values.keys())
+    logging.debug(
+        f"box_plot: initial_errors_counts length: {len(initial_errors_counts)}"
     )
+    logging.debug(
+        f"box_plot: filtered_errors_counts length: {len(filtered_errors_counts)}"
+    )
+    logging.debug(f"box_plot: initial_file_count: {initial_file_count}")
+    logging.debug(f"box_plot: filtered_file_counts: {filtered_file_counts}")
+
+    initial_errors_data = {}
+
+    for e in initial_errors_counts:
+        initial_errors_data[e.error_id] = e.test_paths_count / initial_file_count
+
+    all_error_ids = sorted(set(initial_errors_data.keys()))
+
+    filtered_errors_data = {error_id: [] for error_id in all_error_ids}
+
+    for errors_list, file_count in zip(filtered_errors_counts, filtered_file_counts):
+        tmp_counter = Counter()
+        for error_id in all_error_ids:
+            tmp_counter[error_id] = 0
+        for e in errors_list:
+            tmp_counter[e.error_id] = e.test_paths_count / file_count
+
+        for error_id in all_error_ids:
+            filtered_errors_data[error_id].append(tmp_counter[error_id])
 
     if not all_error_ids:
         ax2.text(0.5, 0.5, "No errors found", ha="center", va="center")
         ax2.set_title("Tests with errors / total tests")
         return
 
-    all_data = []
-    positions = []
-    box_colors = []
+    box_data = []
+    initial_positions = []
+    initial_values = []
+    box_positions = []
     xticklabels = []
 
-    for i, err_id in enumerate(all_error_ids):
-        base = i * 3
-        xticklabels.append(err_id[:30] + "..." if len(err_id) > 30 else err_id)
+    for i, error_id in enumerate(all_error_ids):
+        label = error_id[:20] + "..." if len(error_id) > 30 else error_id
+        xticklabels.append(label)
 
-        if (
-            initial_file_count
-            and initial_file_count > 0
-            and err_id in initial_error_dict
-        ):
-            normalized_initial = initial_error_dict[err_id] / initial_file_count
-            all_data.append([normalized_initial])
-        else:
-            all_data.append([])
-        positions.append(base + 0)
-        box_colors.append("lightblue")
+        box_pos = i + 1
+        box_positions.append(box_pos)
+        box_data.append(filtered_errors_data[error_id])
 
-        filtered_values = filtered_error_values.get(err_id, [])
-        all_data.append(filtered_values)
-        positions.append(base + 1)
-        box_colors.append("orange")
+        initial_positions.append(box_pos)
+        initial_values.append(initial_errors_data.get(error_id, 0))
 
-    plot_data = []
-    plot_pos = []
-    plot_colors = []
-    for d, p, c in zip(all_data, positions, box_colors):
-        if d is not None and len(d) > 0:
-            plot_data.append(d)
-            plot_pos.append(p)
-            plot_colors.append(c)
+    bp = ax2.boxplot(box_data, positions=box_positions, widths=0.6, patch_artist=True)
+    for b in bp["boxes"]:
+        b.set_facecolor("orange")
+        b.set_alpha(0.7)
 
-    if plot_data:
-        bp = ax2.boxplot(plot_data, positions=plot_pos, widths=0.6, patch_artist=True)
-        for i, b in enumerate(bp["boxes"]):
-            b.set_facecolor(plot_colors[i])
-            b.set_alpha(0.7)
+    ax2.scatter(
+        initial_positions,
+        initial_values,
+        color="lightblue",
+        s=100,
+        marker="o",
+        zorder=3,
+        label="Initial",
+        edgecolors="darkblue",
+        linewidths=1.5,
+    )
 
-    if all_error_ids:
-        ax2.set_xticks([i * 3 + 0.5 for i in range(len(all_error_ids))])
-        ax2.set_xticklabels(xticklabels, rotation=45, ha="right")
-
+    ax2.set_xticks(range(1, len(all_error_ids) + 1))
+    ax2.set_xticklabels(xticklabels, rotation=45, ha="right")
     ax2.set_xlabel("Error Types")
     ax2.set_ylabel("Relative tests with errors")
     ax2.set_title("Initial vs Filtered: tests with errors / total tests")
     ax2.legend(
         handles=[
-            Patch(facecolor="lightblue", alpha=0.7, label="Initial"),
             Patch(facecolor="orange", alpha=0.7, label="Filtered"),
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="w",
+                markerfacecolor="lightblue",
+                markeredgecolor="darkblue",
+                markersize=10,
+                label="Initial",
+            ),
         ],
         loc="upper right",
     )
@@ -295,6 +304,7 @@ def produce_artifacts(
     filtered_errors_counts,
     initial_file_count,
     filtered_file_counts,
+    title,
 ):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
 
@@ -307,6 +317,7 @@ def produce_artifacts(
         filtered_file_counts,
     )
 
+    fig.suptitle(title, fontsize=14, fontweight="bold")
     plt.tight_layout()
     save_plot_safely(fig, output_plot_path)
     logging.info(f"Visualization saved to {output_plot_path}")
@@ -396,6 +407,7 @@ def main():
                     filtered_errors_counts,
                     initial_file_count,
                     filtered_file_counts,
+                    f"Knee box experiment. Round {finished_rounds} / {args.experiment_rounds}. Files: {args.max_files}. Split by: {args.split_by}",
                 )
 
 

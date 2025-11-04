@@ -57,6 +57,7 @@ python3 {path_to_runner_main} \
 
     def execute(self):
         print("Running command: ", self.command)
+        timeout = 500
         try:
             result = subprocess.run(
                 self.command,
@@ -65,15 +66,21 @@ python3 {path_to_runner_main} \
                 # stderr=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
-                timeout=500,
+                timeout=timeout,
             )
             # print(f"out")
             # print(result.stdout)
             print("err")
             print(result.stderr)
-            print(f"Test runner completed.")
+            print(f"Test runner completed with return code: {result.returncode}")
+
+            if result.returncode != 0:
+                print(
+                    f"WARNING: Test runner failed with return code {result.returncode}"
+                )
+                return False
         except subprocess.TimeoutExpired:
-            print(f"WARNING: Test runner timed out after 300 seconds!")
+            print(f"WARNING: Test runner timed out after {timeout} seconds!")
             return False
         except Exception as e:
             print(f"ERROR: Test runner failed with exception: {e}")
