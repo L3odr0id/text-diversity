@@ -40,7 +40,8 @@ class TextsFilter:
         self.removes_counter = Counter()
         for file_name in sets_split.current_file_names:
             self.removes_counter[file_name] = 0
-        self.artifacts_lock = multiprocessing.Lock()
+        self.manager = multiprocessing.Manager()
+        self.artifacts_lock = self.manager.Lock()
 
     def produce_artifacts(self):
         knee = Knee(self.removes_counter)

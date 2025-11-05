@@ -63,9 +63,12 @@ class CustomFilteredFilesList(FilteredFilesList):
         self.counter = None
 
     def save(self, knee: Knee):
+        self.list_to_save.clear()
         self.knee_point = int(knee.value)
         self.list_to_save.extend(knee.good_files())
         self.counter = knee.counter
+
+        logging.info(f'[KNEEBOX] knee: {self.knee_point}. list_to_save_len: {self.list_to_save}')
 
 
 def _call_experiment(args, file_paths, i) -> Optional[Tuple[int, Counter, List[ErrorsCount], int]]:
@@ -113,7 +116,7 @@ def _call_experiment(args, file_paths, i) -> Optional[Tuple[int, Counter, List[E
         gh_pages_dir=args.gh_pages_dir,
     )
 
-    logging.info("Getting filtered dataset errors...")
+    logging.info("[KNEEBOX] Getting filtered dataset errors...")
 
     filtered_file_count = len(cff.list_to_save)
     tests_runner_folder.copy_files(cff.list_to_save)
@@ -341,7 +344,8 @@ def main():
         os.path.join(args.dir, name) for name in os.listdir(args.dir) if os.path.isfile(os.path.join(args.dir, name))
     ]
 
-    artifacts_lock = multiprocessing.Lock()
+    manager = multiprocessing.Manager()
+    artifacts_lock = manager.Lock()
     finished_rounds = 0
 
     knee_points = []
