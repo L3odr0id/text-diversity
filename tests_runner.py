@@ -75,10 +75,7 @@ python3 {path_to_runner_main} \
             print(f"Test runner completed with return code: {result.returncode}")
 
             if result.returncode != 0:
-                print(
-                    f"WARNING: Test runner failed with return code {result.returncode}"
-                )
-                return False
+                print(f"WARNING: Test runner failed with return code {result.returncode}")
         except subprocess.TimeoutExpired:
             print(f"WARNING: Test runner timed out after {timeout} seconds!")
             return False

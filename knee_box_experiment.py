@@ -68,9 +68,7 @@ class CustomFilteredFilesList(FilteredFilesList):
         self.counter = knee.counter
 
 
-def _call_experiment(
-    args, file_paths, i
-) -> Optional[Tuple[int, Counter, List[ErrorsCount], int]]:
+def _call_experiment(args, file_paths, i) -> Optional[Tuple[int, Counter, List[ErrorsCount], int]]:
     cff = CustomFilteredFilesList(
         # output_file_path=args.output_file_path,
     )
@@ -191,7 +189,7 @@ def knee_plot(ax1, knee_points, marks_values):
         alpha=0.15,
     )
 
-    ax1.set_xlabel("Files count")
+    ax1.set_xlabel("Files")
     ax1.set_ylabel("Times to remove")
     ax1.set_title("Range of times to remove vs knee point")
     ax1.grid(True, alpha=0.3)
@@ -205,12 +203,8 @@ def box_plot(
     initial_file_count: int,
     filtered_file_counts: List[int],
 ):
-    logging.debug(
-        f"box_plot: initial_errors_counts length: {len(initial_errors_counts)}"
-    )
-    logging.debug(
-        f"box_plot: filtered_errors_counts length: {len(filtered_errors_counts)}"
-    )
+    logging.debug(f"box_plot: initial_errors_counts length: {len(initial_errors_counts)}")
+    logging.debug(f"box_plot: filtered_errors_counts length: {len(filtered_errors_counts)}")
     logging.debug(f"box_plot: initial_file_count: {initial_file_count}")
     logging.debug(f"box_plot: filtered_file_counts: {filtered_file_counts}")
 
@@ -344,18 +338,14 @@ def main():
     args = parser.parse_args()
 
     file_paths = [
-        os.path.join(args.dir, name)
-        for name in os.listdir(args.dir)
-        if os.path.isfile(os.path.join(args.dir, name))
+        os.path.join(args.dir, name) for name in os.listdir(args.dir) if os.path.isfile(os.path.join(args.dir, name))
     ]
 
     artifacts_lock = multiprocessing.Lock()
     finished_rounds = 0
 
     knee_points = []
-    marks_values = (
-        []
-    )  # List of lists: each inner list is sorted counter values from one round
+    marks_values = []  # List of lists: each inner list is sorted counter values from one round
     initial_errors_counts = []
     filtered_errors_counts = []
     filtered_file_counts = []
@@ -377,15 +367,10 @@ def main():
     tests_runner.execute()
     result = TestsRunnerResult(f"initial_{args.errors_report}")
     initial_errors_counts = result.read_result()
-    logging.info(
-        f"Found {len(initial_errors_counts)} unique error types in initial dataset"
-    )
+    logging.info(f"Found {len(initial_errors_counts)} unique error types in initial dataset")
 
     with safe_process_pool_executor(max_workers=args.max_workers) as executor:
-        futures = [
-            executor.submit(_call_experiment, args, file_paths, i)
-            for i in range(args.experiment_rounds)
-        ]
+        futures = [executor.submit(_call_experiment, args, file_paths, i) for i in range(args.experiment_rounds)]
 
         for future in as_completed(futures):
             result = future.result()
