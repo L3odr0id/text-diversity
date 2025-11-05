@@ -49,10 +49,7 @@ class TextsFilter:
 
     def process(self):
         with safe_process_pool_executor(max_workers=self.max_workers) as executor:
-            futures = {
-                executor.submit(_call_filter_files, self.sets_split): i
-                for i in range(self.max_iter)
-            }
+            futures = {executor.submit(_call_filter_files, self.sets_split): i for i in range(self.max_iter)}
 
             for future in as_completed(futures):
                 files_to_remove = future.result()
@@ -60,4 +57,5 @@ class TextsFilter:
                 with self.artifacts_lock:
                     self.finished_rounds += 1
                     self.removes_counter.update(files_to_remove)
+                    logging.info(f"Filter. Finished round {self.finished_rounds} / {self.max_iter}")
                     self.produce_artifacts()
