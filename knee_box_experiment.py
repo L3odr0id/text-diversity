@@ -384,7 +384,7 @@ def main():
                 filtered_errors_counts.append(errors_counts)
                 filtered_file_counts.append(filtered_file_count)
                 marks_values.append(list(sorted(counter.values(), reverse=True)))
-                logging.info(f"Finished round {finished_rounds} / {args.experiment_rounds}")
+                logging.info(f"Experiment. Finished round {finished_rounds} / {args.experiment_rounds}")
                 produce_artifacts(
                     args.output_plot_path,
                     knee_points,
