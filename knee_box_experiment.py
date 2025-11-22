@@ -38,17 +38,17 @@ def add_experiment_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-class CustomPlot(KneePlot):
-    def __init__(self):
-        pass
+# class CustomPlot(KneePlot):
+#     def __init__(self):
+#         pass
 
-    # def __init__(self, output_file: str, display_knee_args: DisplayKneeArgs):
-    #     super().__init__(output_file, display_knee_args)
-    #     self.output_file = output_file
-    #     self.display_knee_args = display_knee_args
+#     # def __init__(self, output_file: str, display_knee_args: DisplayKneeArgs):
+#     #     super().__init__(output_file, display_knee_args)
+#     #     self.output_file = output_file
+#     #     self.display_knee_args = display_knee_args
 
-    def draw(self, knee: Knee, sem_list, round_number: int):
-        pass
+#     def draw(self, knee: Knee, sem_list, round_number: int):
+#         pass
 
 
 class CustomFilteredFilesList(FilteredFilesList):
