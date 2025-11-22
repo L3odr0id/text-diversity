@@ -13,7 +13,7 @@ from matplotlib.lines import Line2D
 
 from keep_diverse.filter_args import add_filter_args
 from keep_diverse.path_args import add_path_arguments
-from keep_diverse.knee_plot import KneePlot, NoOutputKneePlot, DisplayKneeArgs
+from keep_diverse.knee_plot import NoOutputKneePlot
 from keep_diverse.filtered_files_list import FilteredFilesList
 from keep_diverse.logger import configure_logger
 from keep_diverse.keep_diverse import keep_diverse
