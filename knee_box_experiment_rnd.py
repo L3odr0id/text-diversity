@@ -4,6 +4,7 @@ import os
 import logging
 from typing import List, Dict, Optional, Tuple
 from collections import Counter
+import random
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -47,7 +48,7 @@ class CustomPlot(KneePlot):
     #     self.output_file = output_file
     #     self.display_knee_args = display_knee_args
 
-    def draw(self, knee: Knee, sem_list, round_number: int):
+    def draw(self, knee: Knee, round_number: int):
         pass
 
 
@@ -74,49 +75,60 @@ class CustomFilteredFilesList(FilteredFilesList):
 def _call_experiment(
     args, file_paths, i
 ) -> Optional[Tuple[int, Counter, List[ErrorsCount], int]]:
-    cff = CustomFilteredFilesList(
-        output_file_path=args.output_file_path,
-    )
+    limited_file_paths = file_paths[: args.max_files]
 
-    file_paths[: args.max_files]
+    sample_size = max(1, int(len(limited_file_paths) * 0.3))
 
-    knee_plot = NoOutputKneePlot()
-    # (
-    #     NoOutputKneePlot()
-    #     if args.output_plot_path is None
-    #     else KneePlot(
-    #         output_file=args.output_plot_path,
-    #         display_knee_args=DisplayKneeArgs(
-    #             total_files_count=len(file_paths),
-    #             split_by=args.split_by,
-    #             relative_eps=args.relative_eps,
-    #             max_tries=args.max_tries_per_filter_iteration,
-    #             min_indices_count=args.min_indices_count,
-    #             filter_rounds=args.filter_rounds,
-    #         ),
+    files_counter = Counter()
+
+    for _ in range(args.filter_rounds):
+        list_to_save = random.sample(limited_file_paths, sample_size)
+        files_counter.update(list_to_save)
+
+    knee_point = Knee(files_counter).value
+
+    # cff = CustomFilteredFilesList(
+    #     output_file_path=args.output_file_path,
+    # )
+
+    # file_paths[: args.max_files]
+
+    # knee_plot = NoOutputKneePlot()
+    # # (
+    # #     NoOutputKneePlot()
+    # #     if args.output_plot_path is None
+    # #     else KneePlot(
+    # #         output_file=args.output_plot_path,
+    # #         display_knee_args=DisplayKneeArgs(
+    # #             total_files_count=len(file_paths),
+    # #             split_by=args.split_by,
+    # #             relative_eps=args.relative_eps,
+    # #             max_tries=args.max_tries_per_filter_iteration,
+    # #             min_indices_count=args.min_indices_count,
+    # #             filter_rounds=args.filter_rounds,
+    # #         ),
+    # #     )
+    # # )
+
+    # counter_report = (
+    #     NoCounterReport()
+    #     if args.counter_report_path is None
+    #     else CounterReport(
+    #         output_file_path=args.counter_report_path,
     #     )
     # )
 
-    counter_report = (
-        NoCounterReport()
-        if args.counter_report_path is None
-        else CounterReport(
-            output_file_path=args.counter_report_path,
-        )
-    )
-
-    keep_diverse(
-        file_paths=file_paths,
-        filter_rounds=args.filter_rounds,
-        split_by=args.split_by,
-        relative_eps=args.relative_eps,
-        max_tries=args.max_tries_per_filter_iteration,
-        min_indices_count=args.min_indices_count,
-        knee_plot=knee_plot,
-        filtered_files_list=cff,
-        counter_report=counter_report,
-        processes_count=1,
-    )
+    # keep_diverse(
+    #     file_paths=file_paths,
+    #     filter_rounds=args.filter_rounds,
+    #     split_by=args.split_by,
+    #     relative_eps=args.relative_eps,
+    #     max_tries=args.max_tries_per_filter_iteration,
+    #     min_indices_count=args.min_indices_count,
+    #     knee_plot=knee_plot,
+    #     filtered_files_list=cff,
+    #     counter_report=counter_report,
+    # )
 
     temp_dir = tempfile.TemporaryDirectory()
     tests_runner_folder = TestsRunnerFolder(path=temp_dir.name)
@@ -131,13 +143,13 @@ def _call_experiment(
         gh_pages_dir=args.gh_pages_dir,
     )
 
-    filtered_file_count = len(cff.list_to_save)
+    filtered_file_count = len(list_to_save)
 
     logging.info(
         f"[KNEEBOX] Getting filtered dataset errors... Files after filter: {filtered_file_count}"
     )
 
-    tests_runner_folder.copy_files(cff.list_to_save)
+    tests_runner_folder.copy_files(list_to_save)
     runner_success = tests_runner.execute()
 
     if not runner_success:
@@ -148,7 +160,7 @@ def _call_experiment(
     filtered_errors = result.read_result()
     logging.info(f"Found {len(filtered_errors)} unique error types in filtered dataset")
 
-    return (cff.knee_point, cff.counter, filtered_errors, filtered_file_count)
+    return (knee_point, files_counter, filtered_errors, filtered_file_count)
 
 
 def knee_plot(ax1, knee_points, marks_values):
@@ -414,7 +426,7 @@ def main():
             filtered_errors_counts,
             initial_file_count,
             filtered_file_counts,
-            f"Knee box experiment. Round {finished_rounds} / {args.experiment_rounds}. Files: {args.max_files}. Split by: {args.split_by}",
+            f"Random Knee box experiment. Round {finished_rounds} / {args.experiment_rounds}. Files: {args.max_files}. Split by: {args.split_by}",
         )
 
 

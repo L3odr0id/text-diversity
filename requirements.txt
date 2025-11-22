@@ -3,3 +3,4 @@ matplotlib
 numpy
 scipy
 kneed
+git+https://github.com/L3odr0id/keep_diverse@master
