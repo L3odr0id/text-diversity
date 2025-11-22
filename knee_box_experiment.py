@@ -115,7 +115,6 @@ def _call_experiment(
         knee_plot=knee_plot,
         filtered_files_list=cff,
         counter_report=counter_report,
-        processes_count=1,
     )
 
     temp_dir = tempfile.TemporaryDirectory()
