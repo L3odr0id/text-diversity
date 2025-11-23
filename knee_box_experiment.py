@@ -78,7 +78,7 @@ def _call_experiment(
         output_file_path=args.output_file_path,
     )
 
-    file_paths[: args.max_files]
+    file_paths_to_filter = file_paths[: args.max_files]
 
     knee_plot = NoOutputKneePlot()
     # (
@@ -106,7 +106,7 @@ def _call_experiment(
     )
 
     keep_diverse(
-        file_paths=file_paths,
+        file_paths=file_paths_to_filter,
         filter_rounds=args.filter_rounds,
         split_by=args.split_by,
         relative_eps=args.relative_eps,
@@ -115,6 +115,7 @@ def _call_experiment(
         knee_plot=knee_plot,
         filtered_files_list=cff,
         counter_report=counter_report,
+        processes_count=args.processes_count,
     )
 
     temp_dir = tempfile.TemporaryDirectory()
