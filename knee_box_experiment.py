@@ -191,8 +191,8 @@ def knee_plot(ax1, knee_points, marks_values):
     )
 
     mean_knee = np.mean(knee_points)
-    min_knee = np.min(knee_points)
-    max_knee = np.max(knee_points)
+    # min_knee = np.min(knee_points)
+    # max_knee = np.max(knee_points)
 
     ax1.axvline(
         x=mean_knee,
@@ -203,12 +203,12 @@ def knee_plot(ax1, knee_points, marks_values):
         label=f"Mean knee: {mean_knee:.1f}",
     )
 
-    ax1.axvspan(
-        min_knee,
-        max_knee,
-        color="crimson",
-        alpha=0.15,
-    )
+    # ax1.axvspan(
+    #     min_knee,
+    #     max_knee,
+    #     color="crimson",
+    #     alpha=0.15,
+    # )
 
     ax1.set_xlabel("Files")
     ax1.set_ylabel("Times to remove")
@@ -315,6 +315,23 @@ def box_plot(
     ax2.grid(True, alpha=0.3)
 
 
+def box_for_knees(ax, knee_points):
+    bp = ax.boxplot(
+        [knee_points],
+        orientation="horizontal",
+        patch_artist=True,
+        labels=["Knee Points"],
+    )
+
+    for b in bp["boxes"]:
+        b.set_facecolor("lightgreen")
+        b.set_alpha(0.7)
+
+    ax.set_title("Knee points distribution")
+    ax.set_xlabel("Knee value")
+    ax.grid(True, alpha=0.3)
+
+
 def produce_artifacts(
     output_plot_path,
     knee_points,
@@ -325,16 +342,18 @@ def produce_artifacts(
     filtered_file_counts,
     title,
 ):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
+    fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(16, 8))
 
     knee_plot(ax1, knee_points, marks_values)
+    box_for_knees(ax2, knee_points)
     box_plot(
-        ax2,
+        ax3,
         initial_errors_counts,
         filtered_errors_counts,
         initial_file_count,
         filtered_file_counts,
     )
+    ax4.set_axis_off()
 
     fig.suptitle(title, fontsize=14, fontweight="bold")
     plt.tight_layout()
