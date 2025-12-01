@@ -342,12 +342,12 @@ def produce_artifacts(
     filtered_file_counts,
     title,
 ):
-    fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(16, 8))
+    fig, ([ax1, ax2], [ax3, ax4]) = plt.subplots(2, 2, figsize=(12, 12))
 
     knee_plot(ax1, knee_points, marks_values)
-    box_for_knees(ax2, knee_points)
+    box_for_knees(ax3, knee_points)
     box_plot(
-        ax3,
+        ax2,
         initial_errors_counts,
         filtered_errors_counts,
         initial_file_count,
